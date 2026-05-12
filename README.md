@@ -236,6 +236,12 @@ Before publishing, use Git rather than uploading a raw ZIP of the whole folder. 
 - Live updates depend on the Hermes plugin being installed and enabled.
 - Without live plugin events, updates come from session-file polling and may be less immediate.
 
+## Support the Project
+
+If this tool has been helpful and you'd like to support its development, feel free to buy me a coffee.
+
+[![PayPal](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://www.paypal.com/donate?business=davinson@gmail.com&no_recurring=0&item_name=Hermes+Pixel+UI+Support&currency_code=EUR)
+
 ## License
 
 Add a license before publishing if this repository is meant to be reused by others.
