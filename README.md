@@ -12,6 +12,10 @@ Hermes Pixel UI turns local Hermes activity into animated agents inside a small 
 
 > A visual companion for Hermes Agent: local, lightweight, real-time, and designed to make multi-agent work easier to understand at a glance.
 
+## 📸 Screenshot
+
+![Hermes Pixel UI office view](assets/screenshots/hermes-pixel-ui.png)
+
 ---
 
 ## ✨ Features
