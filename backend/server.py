@@ -1,0 +1,736 @@
+"""
+Hermes Pixel UI - Backend Server
+Conecta Hermes con una interfaz visual de oficina pixel art
+"""
+
+from pydantic import BaseModel
+from typing import Optional as Opt
+
+import asyncio
+import json
+import logging
+import os
+import shutil
+import subprocess
+import sys
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, List, Optional
+
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
+
+# Configuración
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+STALE_AGENT_TTL_HOURS = 1
+INACTIVE_AGENT_TIMEOUT_SECONDS = 600  # 10 minutos
+DONE_AGENT_TIMEOUT_SECONDS = 45
+RECENT_WORK_GRACE_SECONDS = 18
+CAFFEINATE_DISABLE_ENV = "PIXEL_UI_DISABLE_CAFFEINATE"
+
+app = FastAPI(title="Hermes Pixel UI", version="0.1.0")
+caffeinate_process: Optional[subprocess.Popen] = None
+
+# CORS para desarrollo
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Estado global de agentes
+class AgentState:
+    def __init__(self):
+        self.agents: Dict[str, dict] = {}
+        self.connections: List[WebSocket] = []
+
+    def prune_stale_agents(self):
+        now = datetime.now().timestamp()
+        stale_cutoff = now - STALE_AGENT_TTL_HOURS * 3600
+        inactive_cutoff = now - INACTIVE_AGENT_TIMEOUT_SECONDS
+        done_cutoff = now - DONE_AGENT_TIMEOUT_SECONDS
+        
+        stale_agent_ids = []
+
+        for agent_id, agent in self.agents.items():
+            last_activity = agent.get("last_activity")
+            if not last_activity:
+                continue
+
+            try:
+                last_seen = datetime.fromisoformat(last_activity).timestamp()
+            except ValueError:
+                continue
+
+            # 1. Hard cutoff (1 hora)
+            if last_seen < stale_cutoff:
+                stale_agent_ids.append(agent_id)
+                continue
+            
+            # 2. Inactivity cutoff (10 min si está idle/done/waiting)
+            status = agent.get("status", "idle")
+            if status == "done" and last_seen < done_cutoff:
+                stale_agent_ids.append(agent_id)
+                continue
+
+            if status in {"idle", "waiting", "error"} and last_seen < inactive_cutoff:
+                stale_agent_ids.append(agent_id)
+
+        for agent_id in stale_agent_ids:
+            self.remove_agent(agent_id)
+
+        return stale_agent_ids
+    
+    def add_agent(self, agent_id: str, name: str = None):
+        now_iso = datetime.now().isoformat()
+        self.agents[agent_id] = {
+            "id": agent_id,
+            "name": name or f"Agente {len(self.agents) + 1}",
+            "status": "idle",  # idle, working, waiting, done, error
+            "task": None,
+            "replay": False,
+            "replay_tool": None,
+            "location": "desk",  # desk, meeting, cafe, library, lounge
+            "activity": "computer",
+            "desk_id": None,
+            "created_at": now_iso,
+            "last_activity": now_iso,
+            "last_work_location": "desk",
+            "last_work_activity": "computer",
+            "last_work_at": now_iso,
+        }
+        logger.info(f"Agente creado: {agent_id} ({self.agents[agent_id]['name']})")
+        return self.agents[agent_id]
+    
+    def update_agent(self, agent_id: str, **kwargs):
+        if agent_id in self.agents:
+            self.agents[agent_id].update(kwargs)
+            self.agents[agent_id]["last_activity"] = datetime.now().isoformat()
+            return self.agents[agent_id]
+        return None
+    
+    def remove_agent(self, agent_id: str):
+        if agent_id in self.agents:
+            agent = self.agents.pop(agent_id)
+            logger.info(f"Agente removido: {agent_id}")
+            return agent
+        return None
+    
+    def get_all_agents(self) -> List[dict]:
+        self.prune_stale_agents()
+        return list(self.agents.values())
+
+state = AgentState()
+
+
+def _parse_iso_timestamp(value: Optional[str]) -> Optional[datetime]:
+    if not value:
+        return None
+
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError:
+        return None
+
+
+def _is_recent_work_focus(agent: Optional[dict]) -> bool:
+    if not agent:
+        return False
+
+    last_work_at = _parse_iso_timestamp(agent.get("last_work_at"))
+    if not last_work_at:
+        return False
+
+    age_seconds = (datetime.now() - last_work_at).total_seconds()
+    return age_seconds <= RECENT_WORK_GRACE_SECONDS
+
+
+def start_caffeinate_guard():
+    global caffeinate_process
+
+    if caffeinate_process and caffeinate_process.poll() is None:
+        return
+
+    if os.getenv(CAFFEINATE_DISABLE_ENV) == "1":
+        logger.info("☕ Caffeinate desactivado por entorno (%s=1)", CAFFEINATE_DISABLE_ENV)
+        return
+
+    if sys.platform != "darwin":
+        logger.info("☕ Caffeinate omitido: solo se usa en macOS")
+        return
+
+    caffeinate_binary = shutil.which("caffeinate")
+    if not caffeinate_binary:
+        logger.warning("☕ Caffeinate no disponible en PATH")
+        return
+
+    try:
+        caffeinate_process = subprocess.Popen(
+            [caffeinate_binary, "-dims", "-w", str(os.getpid())],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        logger.info("☕ Caffeinate activado para mantener el Mac despierto mientras corre el backend")
+    except Exception as exc:
+        logger.warning("☕ No se pudo iniciar caffeinate: %s", exc)
+        caffeinate_process = None
+
+
+def stop_caffeinate_guard():
+    global caffeinate_process
+
+    if not caffeinate_process:
+        return
+
+    if caffeinate_process.poll() is None:
+        try:
+            caffeinate_process.terminate()
+            caffeinate_process.wait(timeout=2)
+        except Exception:
+            try:
+                caffeinate_process.kill()
+            except Exception:
+                pass
+
+    caffeinate_process = None
+
+# WebSocket manager
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    state.connections.append(websocket)
+    
+    # Enviar estado inicial
+    await websocket.send_json({
+        "type": "init",
+        "agents": state.get_all_agents(),
+        "timestamp": datetime.now().isoformat()
+    })
+    
+    try:
+        while True:
+            # Mantener conexión viva, recibir mensajes del frontend
+            data = await websocket.receive_text()
+            message = json.loads(data)
+            
+            if message.get("type") == "ping":
+                await websocket.send_json({"type": "pong"})
+            elif message.get("type") == "get_agents":
+                await websocket.send_json({
+                    "type": "agents_update",
+                    "agents": state.get_all_agents()
+                })
+    except WebSocketDisconnect:
+        state.connections.remove(websocket)
+    except Exception as e:
+        logger.error(f"Error WebSocket: {e}")
+        if websocket in state.connections:
+            state.connections.remove(websocket)
+
+# API REST
+@app.get("/api/agents")
+async def get_agents():
+    """Obtener todos los agentes activos"""
+    return {"agents": state.get_all_agents()}
+
+@app.get("/api/agents/{agent_id}")
+async def get_agent(agent_id: str):
+    """Obtener un agente específico"""
+    if agent_id in state.agents:
+        return {"agent": state.agents[agent_id]}
+    return {"error": "Agente no encontrado"}, 404
+
+@app.post("/api/agents")
+async def create_agent(agent_data: dict):
+    """Crear un nuevo agente"""
+    agent_id = agent_data.get("id", f"agent_{len(state.agents) + 1}")
+    name = agent_data.get("name")
+    agent = state.add_agent(agent_id, name)
+    
+    # Broadcast a todos los clientes
+    await broadcast({
+        "type": "agent_created",
+        "agent": agent
+    })
+    
+    return {"agent": agent}
+
+@app.put("/api/agents/{agent_id}")
+async def update_agent(agent_id: str, agent_data: dict):
+    """Actualizar estado de un agente"""
+    agent = state.update_agent(agent_id, **agent_data)
+    if agent:
+        await broadcast({
+            "type": "agent_updated",
+            "agent": agent
+        })
+        return {"agent": agent}
+    return {"error": "Agente no encontrado"}, 404
+
+@app.delete("/api/agents/{agent_id}")
+async def delete_agent(agent_id: str):
+    """Eliminar un agente"""
+    agent = state.remove_agent(agent_id)
+    if agent:
+        await broadcast({
+            "type": "agent_removed",
+            "agent_id": agent_id
+        })
+        return {"message": "Agente eliminado"}
+    return {"error": "Agente no encontrado"}, 404
+
+@app.get("/api/status")
+async def get_status():
+    """Estado del sistema"""
+    return {
+        "status": "running",
+        "agents_count": len(state.agents),
+        "connections_count": len(state.connections),
+        "live_sessions": len(getattr(hermes_bridge, 'live_sessions', set())),
+        "timestamp": datetime.now().isoformat()
+    }
+
+# Broadcast a todos los clientes conectados
+async def broadcast(message: dict):
+    """Enviar mensaje a todos los clientes WebSocket"""
+    if not state.connections:
+        return
+    
+    message["timestamp"] = datetime.now().isoformat()
+    disconnected = []
+    
+    for connection in state.connections:
+        try:
+            await connection.send_json(message)
+        except Exception as e:
+            logger.error(f"Error broadcast: {e}")
+            disconnected.append(connection)
+    
+    # Limpiar conexiones desconectadas
+    for conn in disconnected:
+        if conn in state.connections:
+            state.connections.remove(conn)
+
+
+# -----------------------------------------------------------------------
+# Real-time event endpoint — receives HTTP POST from Hermes plugin
+# -----------------------------------------------------------------------
+
+LIVE_SESSION_TTL_SECONDS = 600
+
+class HermesPluginEvent(BaseModel):
+    event: str
+    tool_name: str = ""
+    tool_call_id: str = ""
+    session_id: str = ""
+    task_id: str = ""
+    args_preview: str = ""
+    result_preview: str = ""
+    user_message: str = ""
+    assistant_response: str = ""
+    model: str = ""
+    platform: str = ""
+    timestamp: str = ""
+
+
+@app.post("/api/hermes-event")
+async def receive_hermes_event(payload: HermesPluginEvent):
+    """Receive real-time events from the Hermes plugin.
+
+    This endpoint is called by the pixel-ui-bridge plugin installed
+    in ~/.hermes/plugins/.  Events arrive *during* Hermes execution,
+    not after the .jsonl flush.
+    """
+    session_id = payload.session_id or payload.task_id
+    if not session_id:
+        return {"status": "ignored", "reason": "no session_id"}
+
+    # Mark this session as live so the bridge skips replay
+    hermes_bridge.mark_live_session(session_id)
+
+    logger.info(f"⚡ Live event: {payload.event} tool={payload.tool_name} session={session_id[:8]}")
+
+    # Translate plugin event → HermesEvent understood by handle_hermes_event
+    hermes_event = _translate_plugin_event(payload, session_id)
+    if hermes_event:
+        await handle_hermes_event(hermes_event)
+
+    return {"status": "ok"}
+
+
+def _translate_plugin_event(payload: HermesPluginEvent, session_id: str):
+    """Convert a plugin HTTP event into a HermesEvent."""
+    from hermes_bridge import HermesEvent
+
+    if payload.event == "session_start":
+        return HermesEvent("agent_started", {
+            "agent_id": session_id,
+            "name": f"Hermes-{session_id[:6]}",
+            "task": "Session iniciada",
+        })
+
+    if payload.event == "tool_start":
+        tool_name = payload.tool_name or "unknown"
+        context_parts = [tool_name, payload.args_preview]
+        return HermesEvent("tool_call", {
+            "agent_id": session_id,
+            "tool": tool_name,
+            "tools": [tool_name],
+            "tool_context": " ".join(part for part in context_parts if part)[:420],
+            "task": f"Using {tool_name}",
+            "status": "working",
+            "replay": False,
+        })
+
+    if payload.event == "tool_end":
+        tool_name = payload.tool_name or "unknown"
+        return HermesEvent("tool_call", {
+            "agent_id": session_id,
+            "tool": tool_name,
+            "tools": [tool_name],
+            "tool_context": f"{tool_name} completed: {payload.result_preview}"[:420],
+            "task": f"Completed {tool_name}",
+            "status": "working",
+            "replay": False,
+        })
+
+    if payload.event == "llm_start":
+        user_message = (payload.user_message or "")[:420]
+        return HermesEvent("agent_thinking", {
+            "agent_id": session_id,
+            "task": "Thinking",
+            "task_context": user_message,
+            "model": payload.model,
+            "platform": payload.platform,
+        })
+
+    if payload.event == "llm_end":
+        return HermesEvent("agent_idle", {
+            "agent_id": session_id,
+            "task": "Idle",
+        })
+
+    if payload.event == "session_end":
+        return HermesEvent("agent_done", {
+            "agent_id": session_id,
+            "result": "Session finalizada",
+        })
+
+    return None
+
+# Servir frontend estático
+frontend_path = Path(__file__).parent.parent / "frontend" / "dist"
+if frontend_path.exists():
+    app.mount("/", StaticFiles(directory=str(frontend_path), html=True), name="static")
+else:
+    @app.get("/")
+    async def root():
+        return {
+            "message": "Hermes Pixel UI Backend",
+            "status": "running",
+            "frontend": "not built yet - run npm install && npm run build in frontend/",
+            "websocket": "ws://localhost:9000/ws",
+            "api_docs": "http://localhost:9000/docs"
+        }
+
+# Hermes Bridge - Escucha eventos de Hermes
+from hermes_bridge import HermesBridge, HermesEvent
+
+hermes_bridge = HermesBridge()
+
+
+def _contains_any(text: str, needles: List[str]) -> bool:
+    return any(needle in text for needle in needles)
+
+
+LOCATION_ACTIVITY_MAP = {
+    "desk": "computer",
+    "library": "research",
+    "meeting": "meeting",
+    "cafe": "break",
+    "lounge": "rest",
+}
+
+
+def _score_location(text: str) -> Dict[str, int]:
+    normalized = (text or "").lower().strip()
+    scores = {
+        "desk": 0,
+        "library": 0,
+        "meeting": 0,
+        "cafe": 0,
+    }
+
+    weighted_rules = {
+        "desk": [
+            ("browser", 4),
+            ("http", 3),
+            ("web", 3),
+            ("internet", 4),
+            ("navigate", 4),
+            ("snapshot", 3),
+            ("vision", 3),
+            ("browser_console", 3),
+            ("terminal", 3),
+            ("execute_code", 4),
+            ("process", 2),
+            ("patch", 3),
+            ("write_file", 3),
+            ("write", 2),
+            ("code", 2),
+        ],
+        "library": [
+            ("memory", 4),
+            ("read_file", 5),
+            ("search_files", 5),
+            ("skill_", 4),
+            ("skill", 2),
+            ("document", 4),
+            ("documents", 4),
+            ("docs", 4),
+            ("pdf", 4),
+            ("report", 3),
+            ("notes", 3),
+            ("spec", 3),
+            ("file", 2),
+            ("read", 2),
+            ("revisa", 3),
+            ("revisar", 3),
+            ("archivo", 3),
+            ("archivos", 3),
+            ("email", 4),
+            ("mail", 4),
+            ("gmail", 4),
+            ("inbox", 4),
+            ("himalaya", 4),
+        ],
+        "meeting": [
+            ("meeting", 5),
+            ("brainstorm", 5),
+            ("think", 4),
+            ("plan", 5),
+            ("design", 4),
+            ("strategy", 4),
+            ("send_message", 5),
+            ("discuss", 4),
+            ("discussion", 4),
+            ("coordina", 4),
+            ("coordinar", 4),
+            ("idea", 3),
+            ("ideas", 3),
+            ("arquitectura", 3),
+            ("architecture", 3),
+        ],
+        "cafe": [
+            ("wait", 4),
+            ("waiting", 4),
+            ("espera", 4),
+            ("esperando", 4),
+            ("clarify", 5),
+            ("confirm", 3),
+            ("confirma", 3),
+            ("reply", 3),
+            ("respuesta", 3),
+            ("user input", 3),
+            ("pendiente", 3),
+            ("cuando quieras", 4),
+        ],
+    }
+
+    for location, rules in weighted_rules.items():
+        for needle, weight in rules:
+            if needle in normalized:
+                scores[location] += weight
+
+    return scores
+
+
+def _classify_focus(tools: List[str], task: str, tool_context: str = "") -> tuple[str, str]:
+    scores = {
+        "desk": 0,
+        "library": 0,
+        "meeting": 0,
+        "cafe": 0,
+    }
+
+    for tool_name in tools:
+        tool_scores = _score_location(tool_name)
+        for location, value in tool_scores.items():
+            scores[location] += value * 2
+
+    task_scores = _score_location(task)
+    for location, value in task_scores.items():
+        scores[location] += value
+
+    context_scores = _score_location(tool_context)
+    for location, value in context_scores.items():
+        scores[location] += value
+
+    priority = {
+        "meeting": 4,
+        "library": 3,
+        "desk": 2,
+        "cafe": 1,
+    }
+    best_location = max(scores, key=lambda location: (scores[location], priority[location]))
+
+    if scores[best_location] <= 0:
+        best_location = "desk"
+
+    return best_location, LOCATION_ACTIVITY_MAP[best_location]
+
+async def handle_hermes_event(event: HermesEvent):
+    """Procesar eventos que vienen de Hermes"""
+    logger.info(f"📬 Evento de Hermes: {event.type}")
+    
+    agent_id = event.data.get("agent_id")
+    if not agent_id:
+        return
+
+    current_agent = state.agents.get(agent_id)
+
+    # Mapeo de ubicaciones basado en el tipo de evento/tarea
+    location = current_agent.get("location", "desk") if current_agent else "desk"
+    activity = current_agent.get("activity", "computer") if current_agent else "computer"
+    status = "idle"
+    task = event.data.get("task", "")
+    is_replay = bool(event.data.get("replay"))
+    replay_tool = None
+
+    if event.type == "agent_started":
+        status = "working"
+        location = "desk"
+        activity = "computer"
+        task = event.data.get("task", "Iniciando sesión")
+        is_replay = False
+    elif event.type == "tool_call":
+        status = "working"
+        tools = [str(tool).lower() for tool in event.data.get("tools", []) if tool]
+        tool = event.data.get("tool", "").lower()
+        if tool and tool not in tools:
+            tools.insert(0, tool)
+        replay_tool = tool or (tools[0] if tools else None)
+        task = event.data.get("task") or f"Usando {', '.join(tools[:2]) or tool or 'herramientas'}"
+        tool_context = event.data.get("tool_context", "")
+        location, activity = _classify_focus(tools, task, tool_context)
+    elif event.type == "agent_active":
+        status = "working"
+        task = event.data.get("task", "Interactuando")
+        task_context = event.data.get("task_context", "")
+        location, activity = _classify_focus([], task_context or task)
+        is_replay = False
+    elif event.type == "agent_thinking":
+        status = "working"
+        task = event.data.get("task", "Thinking")
+        task_context = event.data.get("task_context", "")
+        location, activity = _classify_focus(["think"], task, task_context)
+        is_replay = False
+    elif event.type == "agent_waiting":
+        status = "waiting"
+        location = "cafe"
+        activity = "break"
+        task = event.data.get("task", "Esperando respuesta")
+        is_replay = False
+    elif event.type == "agent_idle":
+        status = "idle"
+        task = event.data.get("task", "Sin actividad")
+        is_replay = False
+        if current_agent:
+            previous_location = current_agent.get("location", "desk")
+            last_work_location = current_agent.get("last_work_location")
+            last_work_activity = current_agent.get("last_work_activity", "computer")
+
+            if (
+                previous_location in {"desk", "library", "meeting"}
+                and _is_recent_work_focus(current_agent)
+                and last_work_location in {"desk", "library", "meeting"}
+            ):
+                location = last_work_location
+                activity = last_work_activity
+            elif previous_location in {"desk", "library", "meeting"}:
+                location = "cafe"
+                activity = "break"
+            else:
+                location = previous_location
+                activity = current_agent.get("activity", "break")
+        else:
+            location = "cafe"
+            activity = "break"
+    elif event.type == "agent_done":
+        status = "done"
+        location = "lounge"
+        activity = "rest"
+        task = event.data.get("result") or "Completado"
+        is_replay = False
+    elif event.type == "agent_error":
+        status = "error"
+        location = "desk"
+        activity = "computer"
+        task = "Error"
+        is_replay = False
+
+    # Si el agente no existe, crearlo
+    if agent_id not in state.agents:
+        agent_name = event.data.get("name", f"Hermes-{agent_id[:6]}")
+        state.add_agent(agent_id, agent_name)
+    
+    # Actualizar estado
+    agent = state.update_agent(
+        agent_id,
+        status=status,
+        location=location,
+        activity=activity,
+        task=task,
+        replay=is_replay,
+        replay_tool=replay_tool,
+    )
+
+    if status == "working" and location in {"desk", "library", "meeting"}:
+        agent = state.update_agent(
+            agent_id,
+            last_work_location=location,
+            last_work_activity=activity,
+            last_work_at=datetime.now().isoformat(),
+        )
+
+    # Broadcast al frontend
+    await broadcast({
+        "type": "agent_updated",
+        "agent": agent
+    })
+
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    logger.info("🚀 Hermes Pixel UI Backend iniciado")
+    logger.info(f"📁 Session dir: {hermes_bridge.session_dir}")
+    start_caffeinate_guard()
+    
+    # Configurar callback y arrancar bridge
+    hermes_bridge.set_event_callback(handle_hermes_event)
+    bridge_task = asyncio.create_task(hermes_bridge.start_listening())
+    
+    yield
+    
+    # Shutdown
+    hermes_bridge.stop()
+    bridge_task.cancel()
+    stop_caffeinate_guard()
+    logger.info("👋 Hermes Pixel UI Backend detenido")
+
+app.router.lifespan_context = lifespan
+
+if __name__ == "__main__":
+    # Silenciamos los logs de uvicorn para que solo muestren errores
+    logging.getLogger("uvicorn").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn.error").setLevel(logging.WARNING)
+    
+    # Arrancamos sin access_log
+    uvicorn.run(app, host="0.0.0.0", port=9000, access_log=False)
