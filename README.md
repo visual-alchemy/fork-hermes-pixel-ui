@@ -1,67 +1,112 @@
-# Hermes Pixel UI
+# 🎮 Hermes Pixel UI
+
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/)
+[![React](https://img.shields.io/badge/frontend-React-61DAFB.svg)](https://react.dev/)
+[![FastAPI](https://img.shields.io/badge/backend-FastAPI-009688.svg)](https://fastapi.tiangolo.com/)
+[![Hermes Agent](https://img.shields.io/badge/built%20for-Hermes%20Agent-orange.svg)](#how-it-works)
+[![Local First](https://img.shields.io/badge/runtime-localhost-brightgreen.svg)](#privacy--github-safety)
 
 A pixel-art operations room for **Hermes Agent** sessions.
 
-Hermes Pixel UI turns local Hermes activity into animated agents inside a small office: coding work happens at desks, document work moves to the archive, planning goes to the meeting room, waiting happens at the brew bar, and completed work moves to recharge.
+Hermes Pixel UI turns local Hermes activity into animated agents inside a small office. Coding work happens at desks, document work moves to the archive, planning goes to the meeting room, waiting happens at the brew bar, and completed work moves to recharge.
 
-The app is designed as a local companion UI for Hermes Agent. It does not replace Hermes, does not modify Hermes core, and can run entirely on `localhost`.
+> A visual companion for Hermes Agent: local, lightweight, real-time, and designed to make multi-agent work easier to understand at a glance.
 
-## Features
+---
 
-- Live visualization of Hermes sessions as pixel characters.
-- WebSocket updates between the FastAPI backend and the React frontend.
-- Optional Hermes plugin event ingestion through `POST /api/hermes-event`.
-- Fallback polling for Hermes session files in `~/.hermes/sessions`.
-- Room-based activity mapping for coding, browsing, file work, planning, waiting, and completion.
-- Editable scene layout with drag-and-drop furniture placement.
-- Local layout persistence in browser storage.
-- Automatic cleanup of completed agents so long sessions do not clutter the office.
+## ✨ Features
 
-## How It Works
+| Feature | What it does |
+| :--- | :--- |
+| 🧍 Pixel agents | Visualizes Hermes sessions as animated office characters. |
+| ⚡ Live events | Receives Hermes plugin events through `POST /api/hermes-event`. |
+| 🔁 Session fallback | Polls `~/.hermes/sessions` when live plugin events are not available. |
+| 🧠 Activity routing | Sends agents to different rooms based on what Hermes is doing. |
+| 🖥️ Real-time UI | Uses WebSocket updates between FastAPI and React. |
+| 🪑 Scene editor | Lets you drag and drop furniture into the office map. |
+| 💾 Local layout save | Persists layout edits in browser storage. |
+| 🧹 Agent cleanup | Removes completed agents after a short delay to avoid visual clutter. |
+
+---
+
+## 🧭 Office Map
+
+| Room | Visual meaning | Hermes activity |
+| :--- | :--- | :--- |
+| 🖥️ `Main Floor` | Active desk work | Terminal work, browser work, code edits, patches, command execution |
+| 📚 `Archive` | Research and files | File reads, search, memory, documents, notes |
+| 🧠 `Meeting Room` | Thinking and planning | LLM calls, brainstorming, design, coordination |
+| ☕ `Brew Bar` | Waiting and pauses | Clarifications, idle state, short breaks |
+| 🛋️ `Recharge` | Completed work | Finished tasks and short rest state |
+
+The room mapping is heuristic and lives in [backend/server.py](backend/server.py).
+
+---
+
+## 🔄 How It Works
 
 Hermes Pixel UI uses the Hermes `session_id` as the visual agent identifier.
 
-There are two supported input paths:
+```text
+                         ┌────────────────────┐
+                         │    Hermes Agent    │
+                         └─────────┬──────────┘
+                                   │
+               ┌───────────────────┴───────────────────┐
+               │                                       │
+               v                                       v
+┌─────────────────────────────┐       ┌─────────────────────────────┐
+│ pixel-ui-bridge plugin      │       │ ~/.hermes/sessions          │
+│ live lifecycle events       │       │ session_*.json / *.jsonl    │
+└──────────────┬──────────────┘       └──────────────┬──────────────┘
+               │                                     │
+               v                                     v
+        ┌──────────────────────────────────────────────────┐
+        │ FastAPI backend                                  │
+        │ /api/hermes-event + fallback polling + WebSocket │
+        └─────────────────────────┬────────────────────────┘
+                                  │
+                                  v
+        ┌──────────────────────────────────────────────────┐
+        │ React pixel office                               │
+        │ animated agents, rooms, furniture, scene editor  │
+        └──────────────────────────────────────────────────┘
+```
+
+### Supported input paths
 
 1. **Live plugin events**
-   Hermes sends lifecycle events to the Pixel UI backend:
 
    ```text
-   Hermes Agent -> pixel-ui-bridge plugin -> POST /api/hermes-event -> WebSocket -> browser
+   Hermes Agent -> pixel-ui-bridge -> POST /api/hermes-event -> WebSocket -> Browser
    ```
 
 2. **Session file fallback**
-   If the plugin is not installed or not active, the backend polls Hermes session files:
 
    ```text
    ~/.hermes/sessions/session_*.json
    ~/.hermes/sessions/*.jsonl
    ```
 
-When live plugin events are active for a session, file polling stays as a fallback but does not overwrite recent live state.
+When live events are active for a session, file polling stays available but does not overwrite recent live state.
 
-## Rooms
+---
 
-| Room | Hermes Activity |
-| --- | --- |
-| `Main Floor` | Terminal work, browser work, code edits, patches, command execution |
-| `Archive` | File reads, search, memory, documents, notes, mail-like/document workflows |
-| `Meeting Room` | LLM thinking, planning, brainstorming, design, coordination |
-| `Brew Bar` | Waiting, clarification, idle state, pauses |
-| `Recharge` | Completed tasks and short rest state |
-
-The mapping is heuristic and lives in [backend/server.py](backend/server.py).
-
-## Requirements
+## 📋 Requirements
 
 - Python 3.9+
 - Node.js 18+
 - npm
 - Hermes Agent installed locally
 
-Python dependencies are listed in [backend/requirements.txt](backend/requirements.txt). Frontend dependencies are listed in [frontend/package.json](frontend/package.json).
+Dependencies:
 
-## Quick Start
+- Python: [backend/requirements.txt](backend/requirements.txt)
+- Frontend: [frontend/package.json](frontend/package.json)
+
+---
+
+## 🚀 Quick Start
 
 From the repository root:
 
@@ -71,8 +116,10 @@ From the repository root:
 
 This starts:
 
-- Backend API on `http://localhost:9000`
-- Vite development frontend on `http://localhost:9001`
+| Service | URL |
+| :--- | :--- |
+| Backend API | `http://localhost:9000` |
+| Vite frontend | `http://localhost:9001` |
 
 Open:
 
@@ -80,9 +127,11 @@ Open:
 http://localhost:9001
 ```
 
-## Production-Style Local Run
+---
 
-Build the frontend first:
+## 🏗️ Production-Style Local Run
+
+Build the frontend:
 
 ```bash
 cd frontend
@@ -90,7 +139,7 @@ npm install
 npm run build
 ```
 
-Then start the backend:
+Start the backend:
 
 ```bash
 cd ../backend
@@ -108,7 +157,9 @@ http://localhost:9000
 
 In this mode, FastAPI serves the compiled frontend from `frontend/dist`.
 
-## Hermes Plugin Setup
+---
+
+## 🔌 Hermes Plugin Setup
 
 For live updates, Hermes should have the `pixel-ui-bridge` plugin installed under:
 
@@ -116,7 +167,7 @@ For live updates, Hermes should have the `pixel-ui-bridge` plugin installed unde
 ~/.hermes/plugins/pixel-ui-bridge/
 ```
 
-Hermes must also enable the plugin in its configuration:
+Enable it in the Hermes configuration:
 
 ```yaml
 plugins:
@@ -124,15 +175,17 @@ plugins:
     - pixel-ui-bridge
 ```
 
-The plugin is expected to send local HTTP events to:
+The plugin should send local HTTP events to:
 
 ```text
 http://localhost:9000/api/hermes-event
 ```
 
-If the plugin is not available, Pixel UI still works through session-file polling.
+If the plugin is not installed or not active, Pixel UI still works through session-file polling.
 
-## API
+---
+
+## 🧪 API & Diagnostics
 
 Useful local endpoints:
 
@@ -155,7 +208,17 @@ WebSocket endpoint:
 ws://localhost:9000/ws
 ```
 
-## Development
+Safe plugin/backend check:
+
+```bash
+./check-plugin.sh
+```
+
+`check-plugin.sh` checks plugin presence and backend reachability without printing local Hermes files, source code, git history, or user-specific absolute paths.
+
+---
+
+## 🛠️ Development
 
 Frontend hot reload:
 
@@ -182,17 +245,9 @@ npm run build
 
 Backend changes require restarting `python server.py`.
 
-## Diagnostics
+---
 
-Run the safe plugin/backend check:
-
-```bash
-./check-plugin.sh
-```
-
-The script checks plugin presence and backend reachability without printing local Hermes files, source code, git history, or user-specific absolute paths.
-
-## Project Structure
+## 🗂️ Project Structure
 
 ```text
 backend/
@@ -203,6 +258,7 @@ backend/
 frontend/
   src/App.jsx        React shell, panels, editor controls
   src/game/          Pixel renderer, layout logic, sprite handling
+  src/assets/        Characters, furniture, walls, floors, layout
   package.json       Frontend dependencies and scripts
 
 layouts/
@@ -212,9 +268,11 @@ check-plugin.sh      Safe local diagnostics
 start.sh             Local development launcher
 ```
 
-## Privacy and GitHub Safety
+---
 
-This repository is intended to be safe to publish.
+## 🛡️ Privacy & GitHub Safety
+
+Hermes Pixel UI is intended to be safe to publish.
 
 The `.gitignore` excludes local-only files such as:
 
@@ -227,21 +285,27 @@ The `.gitignore` excludes local-only files such as:
 - Python caches
 - OS metadata files
 
-Before publishing, use Git rather than uploading a raw ZIP of the whole folder. A raw ZIP may include ignored local files such as `.venv`, `node_modules`, `.DS_Store`, or generated builds.
+Before publishing or sharing, use Git rather than uploading a raw ZIP of the whole folder. A raw ZIP may include ignored local files such as `.venv`, `node_modules`, `.DS_Store`, or generated builds.
 
-## Limitations
+---
+
+## ⚠️ Current Limitations
 
 - Visual separation depends on Hermes creating distinct session IDs.
 - Room assignment is heuristic and depends on the event or tool metadata Hermes emits.
 - Live updates depend on the Hermes plugin being installed and enabled.
 - Without live plugin events, updates come from session-file polling and may be less immediate.
 
-## Support the Project
+---
+
+## ☕ Support the Project
 
 If this tool has been helpful and you'd like to support its development, feel free to buy me a coffee.
 
 [![PayPal](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://www.paypal.com/donate?business=davinson@gmail.com&no_recurring=0&item_name=Hermes+Pixel+UI+Support&currency_code=EUR)
 
-## License
+---
 
-Add a license before publishing if this repository is meant to be reused by others.
+## 📄 License
+
+No formal license file has been added yet.
