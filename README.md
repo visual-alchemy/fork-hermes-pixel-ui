@@ -293,6 +293,16 @@ Before publishing or sharing, use Git rather than uploading a raw ZIP of the who
 
 ---
 
+## 🙏 Credits & Inspiration
+
+Hermes Pixel UI was inspired by [Pixel Agents](https://github.com/pablodelucca/pixel-agents) by Pablo De Lucca, an MIT-licensed pixel office interface for visualizing AI agents.
+
+Office-style pixel assets and the general "agents in a pixel office" interaction model are adapted from that open-source project. Character sprites are based on [MetroCity - Free Top Down Character Pack](https://jik-a-4.itch.io/metrocity-free-topdown-character-pack) by JIK-A-4, credited by Pixel Agents and published as CC0.
+
+See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for third-party attribution and license notes.
+
+---
+
 ## ⚠️ Current Limitations
 
 - Visual separation depends on Hermes creating distinct session IDs.
@@ -312,4 +322,4 @@ If this tool has been helpful and you'd like to support its development, feel fr
 
 ## 📄 License
 
-No formal license file has been added yet.
+No formal top-level license file has been added yet. Third-party attribution and license notices are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
