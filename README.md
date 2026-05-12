@@ -161,6 +161,16 @@ http://localhost:9000
 
 In this mode, FastAPI serves the compiled frontend from `frontend/dist`.
 
+### macOS sleep prevention
+
+On macOS, the backend automatically starts `caffeinate` while it is running so the machine does not go to sleep during long Hermes Agent sessions.
+
+To disable this behavior:
+
+```bash
+PIXEL_UI_DISABLE_CAFFEINATE=1 python server.py
+```
+
 ---
 
 ## 🔌 Hermes Plugin Setup
