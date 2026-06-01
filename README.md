@@ -326,7 +326,7 @@ See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for third-party attribution
 
 If this tool has been helpful and you'd like to support its development, feel free to buy me a coffee.
 
-[![PayPal](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://www.paypal.com/donate?business=davinson@gmail.com&no_recurring=0&item_name=Hermes+Pixel+UI+Support&currency_code=EUR)
+[![PayPal](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://paypal.me/dpezo)
 
 ---
 
