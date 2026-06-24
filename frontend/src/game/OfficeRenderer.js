@@ -195,7 +195,7 @@ export class OfficeRenderer {
     if (!this.assetLoader.isLoaded) return
 
     const layoutChanged = layoutState && layoutState !== this.layout
-    if (layoutState) this.layout = layoutState
+    if (layoutState && layoutState.zones && layoutState.furniture) this.layout = layoutState
 
     if (layoutChanged) {
       this.updateCollisionMap()

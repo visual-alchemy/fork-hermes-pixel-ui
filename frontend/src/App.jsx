@@ -609,10 +609,11 @@ function App() {
 
     return left.localeCompare(right)
   })
-  const visibleZones = layout.zones.filter(
+  const zones = layout?.zones || []
+  const visibleZones = zones.filter(
     (zone) => zone.render !== false && zone.showInOverview !== false,
   )
-  const zoneSummaries = layout.zones.map((zone) => ({
+  const zoneSummaries = zones.map((zone) => ({
     ...zone,
     count: agents.filter((agent) => agent.location === zone.id).length,
   }))
@@ -627,7 +628,7 @@ function App() {
   const hiddenOfficeAgentCount = Math.max(0, agents.length - officeAgents.length)
   const visibleOfficeAgentIds = new Set(officeAgents.map((agent) => agent.id))
   const zoneLabelMap = Object.fromEntries(
-    layout.zones.map((zone) => [zone.id, zone.label || zone.name || zone.id]),
+    zones.map((zone) => [zone.id, zone.label || zone.name || zone.id]),
   )
   const agentVisualAssignments = getAgentVisualAssignments(
     agents,
