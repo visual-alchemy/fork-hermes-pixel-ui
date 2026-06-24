@@ -67,7 +67,7 @@
       },
       "doors": [
         {
-          "side": "bottom",
+          "side": "left",
           "start": 1,
           "size": 2
         }
