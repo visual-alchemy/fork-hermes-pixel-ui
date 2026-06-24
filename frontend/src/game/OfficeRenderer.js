@@ -220,11 +220,15 @@ export class OfficeRenderer {
     this.drawOfficeBase()
     this.drawZones()
 
+    const visualAgents = this.getVisualAgents(agents)
+
+    // Draw error zone overlays before furniture/agents so they appear behind
+    this.drawErrorZoneOverlays(visualAgents)
+
     if (this.editMode) {
       this.drawGrid()
     }
 
-    const visualAgents = this.getVisualAgents(agents)
     const renderables = this.collectRenderables(visualAgents)
 
     if (this.editMode && this.selectedFurnitureType) {
@@ -1880,6 +1884,14 @@ export class OfficeRenderer {
       ctx.restore()
     }
 
+    // --- P0 Feature: Error State Visual Alarm ---
+    if (status === 'error') {
+      this.drawAgentErrorAlarm(ctx, x, y, drawX, drawY, drawWidth, drawHeight, spriteScale)
+    }
+
+    // --- P0 Feature: Agent Name Label ---
+    this.drawAgentNameLabel(ctx, agent, drawX, drawY, drawWidth, spriteScale)
+
     ctx.restore()
   }
 
@@ -2144,5 +2156,139 @@ export class OfficeRenderer {
     this.ctx.lineWidth = 2
     this.ctx.strokeRect(x + 1, y + 1, width * this.tileSize - 2, height * this.tileSize - 2)
     this.ctx.restore()
+  }
+
+  // =========================================================================
+  // P0 Feature: Agent Name Labels
+  // =========================================================================
+
+  drawAgentNameLabel(ctx, agent, drawX, drawY, drawWidth, spriteScale) {
+    const name = agent.name || agent.id || ''
+    const displayName = name.length > 10 ? name.slice(0, 10) : name
+    if (!displayName) return
+
+    const fontSize = Math.max(7, Math.round(spriteScale * 3.8))
+    ctx.save()
+    ctx.font = `${fontSize}px 'FS Pixel Sans', monospace`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'bottom'
+
+    const textWidth = ctx.measureText(displayName).width
+    const paddingX = Math.max(3, spriteScale * 1.5)
+    const paddingY = Math.max(2, spriteScale * 0.8)
+    const pillWidth = textWidth + paddingX * 2
+    const pillHeight = fontSize + paddingY * 2
+    const pillX = drawX + drawWidth / 2 - pillWidth / 2
+    const pillY = drawY - pillHeight - Math.max(2, spriteScale * 1.2)
+
+    // Dark pill background
+    ctx.fillStyle = 'rgba(8, 10, 18, 0.78)'
+    ctx.fillRect(pillX, pillY, pillWidth, pillHeight)
+
+    // Thin accent border
+    const borderColor = agent.status === 'error'
+      ? 'rgba(238, 123, 123, 0.7)'
+      : agent.status === 'working'
+        ? 'rgba(0, 180, 216, 0.5)'
+        : 'rgba(95, 114, 146, 0.45)'
+    ctx.strokeStyle = borderColor
+    ctx.lineWidth = 1
+    ctx.strokeRect(pillX, pillY, pillWidth, pillHeight)
+
+    // Name text
+    ctx.fillStyle = agent.status === 'error'
+      ? '#ee7b7b'
+      : '#e8ecf4'
+    ctx.fillText(displayName, drawX + drawWidth / 2, pillY + pillHeight - paddingY)
+
+    ctx.restore()
+  }
+
+  // =========================================================================
+  // P0 Feature: Error State Visual Alarm
+  // =========================================================================
+
+  drawAgentErrorAlarm(ctx, x, y, drawX, drawY, drawWidth, drawHeight, spriteScale) {
+    const now = Date.now()
+    const breathe = 0.5 + 0.5 * Math.sin(now / 300)
+
+    // Red pulsing glow under the agent
+    ctx.save()
+    const centerX = x + this.tileSize / 2
+    const centerY = y + this.tileSize - 2 * spriteScale
+    const radius = Math.max(this.tileSize * 0.5, drawWidth * 0.45)
+
+    ctx.globalAlpha = 0.15 + 0.15 * breathe
+    const glow = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius * 1.4)
+    glow.addColorStop(0, 'rgba(238, 80, 80, 0.7)')
+    glow.addColorStop(0.5, 'rgba(238, 80, 80, 0.25)')
+    glow.addColorStop(1, 'rgba(238, 80, 80, 0)')
+    ctx.fillStyle = glow
+    ctx.beginPath()
+    ctx.ellipse(centerX, centerY, radius * 1.4, radius * 0.7, 0, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.restore()
+
+    // Floating ⚠ warning icon above the agent
+    ctx.save()
+    const iconSize = Math.max(8, spriteScale * 4.5)
+    const bobY = Math.sin(now / 400) * spriteScale * 1.2
+    const iconX = drawX + drawWidth / 2
+    const iconY = drawY - iconSize - spriteScale * 4 + bobY
+
+    // Warning triangle
+    ctx.globalAlpha = 0.7 + 0.3 * breathe
+    ctx.fillStyle = '#ee5050'
+    ctx.beginPath()
+    ctx.moveTo(iconX, iconY - iconSize * 0.6)
+    ctx.lineTo(iconX - iconSize * 0.5, iconY + iconSize * 0.4)
+    ctx.lineTo(iconX + iconSize * 0.5, iconY + iconSize * 0.4)
+    ctx.closePath()
+    ctx.fill()
+
+    // Exclamation mark inside triangle
+    ctx.fillStyle = '#ffffff'
+    const markWidth = Math.max(1, spriteScale * 0.7)
+    const markHeight = iconSize * 0.3
+    ctx.fillRect(iconX - markWidth / 2, iconY - iconSize * 0.25, markWidth, markHeight)
+    ctx.fillRect(iconX - markWidth / 2, iconY + iconSize * 0.15, markWidth, markWidth)
+
+    ctx.restore()
+  }
+
+  drawErrorZoneOverlays(agents) {
+    // Find zones that contain at least one errored agent
+    const errorZoneIds = new Set()
+    agents.forEach((agent) => {
+      if (agent.status === 'error') {
+        errorZoneIds.add(agent.location)
+      }
+    })
+
+    if (errorZoneIds.size === 0) return
+
+    const now = Date.now()
+    const breathe = 0.5 + 0.5 * Math.sin(now / 500)
+
+    this.layout.zones.forEach((zone) => {
+      if (zone.render === false) return
+      if (!errorZoneIds.has(zone.id)) return
+
+      const { x, y } = this.tileToScreen(zone.bounds.x, zone.bounds.y)
+      const width = zone.bounds.width * this.tileSize
+      const height = zone.bounds.height * this.tileSize
+
+      this.ctx.save()
+      this.ctx.globalAlpha = 0.04 + 0.04 * breathe
+      this.ctx.fillStyle = '#ee5050'
+      this.ctx.fillRect(x, y, width, height)
+
+      // Pulsing red border
+      this.ctx.globalAlpha = 0.2 + 0.15 * breathe
+      this.ctx.strokeStyle = '#ee5050'
+      this.ctx.lineWidth = 2
+      this.ctx.strokeRect(x + 1, y + 1, width - 2, height - 2)
+      this.ctx.restore()
+    })
   }
 }
