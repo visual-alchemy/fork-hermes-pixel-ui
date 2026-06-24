@@ -377,7 +377,7 @@ async def websocket_endpoint(websocket: WebSocket):
             elif message.get("type") == "get_agents":
                 await websocket.send_json({
                     "type": "agents_update",
-                    "agents": state.get_all_agents()
+                    "agents": await state.get_all_agents()
                 })
     except WebSocketDisconnect:
         state.connections.remove(websocket)
@@ -390,7 +390,7 @@ async def websocket_endpoint(websocket: WebSocket):
 @app.get("/api/agents")
 async def get_agents():
     """Obtener todos los agentes activos"""
-    return {"agents": state.get_all_agents()}
+    return {"agents": await state.get_all_agents()}
 
 @app.get("/api/agents/{agent_id}")
 async def get_agent(agent_id: str):

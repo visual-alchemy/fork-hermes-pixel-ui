@@ -92,9 +92,13 @@ export function useWebSocket({ addLog, onLayoutUpdate, onInit }: UseWebSocketOpt
       }
     }
 
-    ws.onclose = () => {
+    ws.onerror = (event: Event) => {
+      console.error('[WS] error event:', event)
+    }
+
+    ws.onclose = (event: CloseEvent) => {
       setConnected(false)
-      addLog(null, 'SYSTEM', 'error', 'WebSocket telemetry link offline. Reconnecting...')
+      addLog(null, 'SYSTEM', 'error', `WebSocket telemetry link offline (code: ${event.code}). Reconnecting...`)
       window.setTimeout(connect, 2000)
     }
 
