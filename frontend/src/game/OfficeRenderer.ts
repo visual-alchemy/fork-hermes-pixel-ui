@@ -1555,13 +1555,24 @@ export class OfficeRenderer {
       state.finalTarget.col !== targetTile.col ||
       state.finalTarget.row !== targetTile.row
     ) {
-      const startCol = Math.round((state.x - this.offsetX) / this.tileSize)
-      const startRow = Math.round((state.y - this.offsetY) / this.tileSize)
-      state.path = this.findPath(startCol, startRow, targetTile.col, targetTile.row)
-      state.finalTarget = targetTile as InteractionTarget
-      state.currentTarget = (state.path.shift() ?? null) as InteractionTarget | null
-      if (typeof (targetTile as any).facingRight === 'boolean') {
-        state.facingRight = (targetTile as any).facingRight
+      const zoneChanged = state.zoneId !== (zone?.id)
+      state.zoneId = zone?.id
+
+      if (zoneChanged) {
+        state.x = targetX
+        state.y = targetY
+        state.path = []
+        state.currentTarget = null
+        state.finalTarget = targetTile as InteractionTarget
+      } else {
+        const startCol = Math.round((state.x - this.offsetX) / this.tileSize)
+        const startRow = Math.round((state.y - this.offsetY) / this.tileSize)
+        state.path = this.findPath(startCol, startRow, targetTile.col, targetTile.row)
+        state.finalTarget = targetTile as InteractionTarget
+        state.currentTarget = (state.path.shift() ?? null) as InteractionTarget | null
+        if (typeof (targetTile as any).facingRight === 'boolean') {
+          state.facingRight = (targetTile as any).facingRight
+        }
       }
     }
 
