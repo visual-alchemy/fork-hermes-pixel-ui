@@ -278,10 +278,10 @@ select {
   top: 18px;
   left: 18px;
   width: 280px;
-  max-height: 60vh;
+  max-height: 80vh;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
 }
 
 .editor-sidebar {
