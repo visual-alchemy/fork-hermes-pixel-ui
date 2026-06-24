@@ -947,17 +947,39 @@ async def lifespan(app: FastAPI):
     # Init SQLite agent store (DB for crash recovery, fresh start each session)
     await state.store.init()
 
-    # Auto-spawn Alfred so he's always visible in the office on startup
+    # Auto-spawn Alfred so he's always visible, chilling in the lounge
     if "hermes_current" not in state.agents:
         state.add_agent("hermes_current", "Alfred")
-        state.update_agent("hermes_current", status="working", task="On duty", location="desk", activity="computer")
-        logger.info("🦇 Alfred auto-spawned in the office")
+        state.update_agent("hermes_current", status="idle", task="Enjoying a break", location="lounge", activity="rest")
+        logger.info("🦇 Alfred auto-spawned, chilling in the lounge")
+
+    # Background task: idle agents wander between rooms
+    async def idle_room_roamer():
+        chill_rooms = ["cafe", "lounge", "library"]
+        while True:
+            await asyncio.sleep(20)
+            for agent_id, agent in list(state.agents.items()):
+                if agent.get("status") not in ("idle", "done"):
+                    continue
+                current = agent.get("location", "desk")
+                others = [r for r in chill_rooms if r != current]
+                if others:
+                    import random
+                    new_room = random.choice(others)
+                    state.update_agent(agent_id, location=new_room, activity="roam")
+                    await broadcast({
+                        "type": "agent_updated",
+                        "agent": state.agents[agent_id]
+                    })
+
+    room_roamer_task = asyncio.create_task(idle_room_roamer())
     
     yield
     
     # Shutdown
     hermes_bridge.stop()
     bridge_task.cancel()
+    room_roamer_task.cancel()
     stop_caffeinate_guard()
     logger.info("👋 Hermes Pixel UI Backend detenido")
 

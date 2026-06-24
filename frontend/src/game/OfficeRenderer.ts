@@ -1665,6 +1665,8 @@ export class OfficeRenderer {
   }
 
   shouldAnchorAgent(agent: Agent, zone: Zone | null = null, activity: string | null = this.getAgentActivity(agent)): boolean {
+    if (agent.status === 'idle' || agent.status === 'done') return false
+
     if (agent.replay && agent.status === 'working' && zone?.id && zone.id !== 'cafe') {
       return true
     }
