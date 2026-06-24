@@ -1,9 +1,32 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type FormEvent, type MouseEvent } from 'react'
 import { assetLoader } from './game/AssetLoader'
 import { OfficeRenderer } from './game/OfficeRenderer'
 import defaultLayout from './assets/layout.json'
+import type { Agent, AgentStatus, Layout, LayoutPreset, Zone, FurnitureItem } from './types'
 
-const statusLabels = {
+interface AgentVisual {
+  characterIndex: number
+  hueShift: number
+}
+
+interface LogItem {
+  id: string
+  timestamp: string
+  agentName: string
+  type: string
+  text: string
+}
+
+interface AgentCard extends Agent {
+  avatar: string | null
+  zoneLabel: string
+  displayTask: string
+  statusLabel: string
+  isCompact: boolean
+  roleLabel: string
+}
+
+const statusLabels: Record<AgentStatus | string, string> = {
   idle: 'Idle',
   working: 'Working',
   waiting: 'Waiting',
@@ -12,11 +35,11 @@ const statusLabels = {
 }
 
 const MAX_OFFICE_AGENTS = 12
-const ACTIVE_AGENT_STATUSES = new Set(['working', 'waiting', 'error'])
-const STAFF_COLLAPSE_STATUSES = new Set(['idle', 'done'])
+const ACTIVE_AGENT_STATUSES = new Set<AgentStatus>(['working', 'waiting', 'error'])
+const STAFF_COLLAPSE_STATUSES = new Set<AgentStatus>(['idle', 'done'])
 const LAYOUT_STORAGE_KEY = 'pixel-ui-layout'
 
-function hashCode(value) {
+function hashCode(value: string): number {
   let hash = 0
   for (let index = 0; index < value.length; index += 1) {
     hash = (hash << 5) - hash + value.charCodeAt(index)
@@ -25,13 +48,14 @@ function hashCode(value) {
   return hash
 }
 
-function getAgentTime(agent, field = 'last_activity') {
-  const timestamp = Date.parse(agent?.[field] || '')
+function getAgentTime(agent: Agent, field = 'last_update'): number {
+  const val = (agent as unknown as Record<string, unknown>)[field]
+  const timestamp = Date.parse(typeof val === 'string' ? val : '')
   return Number.isNaN(timestamp) ? 0 : timestamp
 }
 
-function isLikelySubagent(agent) {
-  const taskText = `${agent?.task || ''} ${agent?.replay_tool || ''}`.toLowerCase()
+function isLikelySubagent(agent: Agent): boolean {
+  const taskText = `${agent.task || ''} ${agent.replay_tool || ''}`.toLowerCase()
   return (
     taskText.includes('delegate') ||
     taskText.includes('subagent') ||
@@ -40,7 +64,7 @@ function isLikelySubagent(agent) {
   )
 }
 
-function getOfficeAgentPriority(agent) {
+function getOfficeAgentPriority(agent: Agent): number {
   if (agent.status === 'error') return 500
   if (agent.status === 'working') return 450
   if (agent.status === 'waiting') return 360
@@ -49,7 +73,7 @@ function getOfficeAgentPriority(agent) {
   return 120
 }
 
-function getOfficeAgents(agents) {
+function getOfficeAgents(agents: Agent[]): Agent[] {
   if (agents.length <= MAX_OFFICE_AGENTS) return agents
 
   return [...agents]
@@ -67,7 +91,7 @@ function getOfficeAgents(agents) {
     .slice(0, MAX_OFFICE_AGENTS)
 }
 
-function getStaffAgents(agents) {
+function getStaffAgents(agents: Agent[]): Agent[] {
   return [...agents].sort((left, right) => {
     const leftCollapsed = STAFF_COLLAPSE_STATUSES.has(left.status) && isLikelySubagent(left) ? 1 : 0
     const rightCollapsed = STAFF_COLLAPSE_STATUSES.has(right.status) && isLikelySubagent(right) ? 1 : 0
@@ -81,21 +105,24 @@ function getStaffAgents(agents) {
   })
 }
 
-function loadInitialLayout() {
+function loadInitialLayout(): Layout {
   try {
     const storedLayout = window.localStorage.getItem(LAYOUT_STORAGE_KEY)
-    if (!storedLayout) return defaultLayout
-    return JSON.parse(storedLayout)
+    if (!storedLayout) return defaultLayout as unknown as Layout
+    return JSON.parse(storedLayout) as Layout
   } catch (err) {
     console.warn('No se pudo cargar el layout guardado:', err)
-    return defaultLayout
+    return defaultLayout as unknown as Layout
   }
 }
 
-function getAgentVisualAssignments(agents, characterCount) {
-  const assignments = new Map()
+function getAgentVisualAssignments(
+  agents: Agent[],
+  characterCount: number,
+): Map<string, AgentVisual> {
+  const assignments = new Map<string, AgentVisual>()
   const count = Math.max(1, characterCount || 1)
-  const usedCharacters = new Set()
+  const usedCharacters = new Set<number>()
 
   ;[...agents]
     .sort((left, right) => String(left.id).localeCompare(String(right.id)))
@@ -124,7 +151,7 @@ function getAgentVisualAssignments(agents, characterCount) {
   return assignments
 }
 
-const preferredFurnitureOrder = [
+const preferredFurnitureOrder: string[] = [
   'DESK',
   'PC',
   'TABLE_FRONT',
@@ -143,7 +170,7 @@ const preferredFurnitureOrder = [
   'BIN',
 ]
 
-const furnitureLabels = {
+const furnitureLabels: Record<string, string> = {
   BIN: 'Bin',
   BOOKSHELF: 'Bookshelf',
   CACTUS: 'Cactus',
@@ -172,10 +199,10 @@ const furnitureLabels = {
 }
 
 function App() {
-  const [agents, setAgents] = useState([])
-  const [layout, setLayout] = useState(loadInitialLayout)
-  const [serverLayout, setServerLayout] = useState(null)
-  const [presets, setPresets] = useState([])
+  const [agents, setAgents] = useState<Agent[]>([])
+  const [layout, setLayout] = useState<Layout>(loadInitialLayout)
+  const [serverLayout, setServerLayout] = useState<Layout | null>(null)
+  const [presets, setPresets] = useState<LayoutPreset[]>([])
   const [newPresetName, setNewPresetName] = useState('')
   const [activePresetId, setActivePresetId] = useState('default')
   const [isSavingPreset, setIsSavingPreset] = useState(false)
@@ -184,14 +211,14 @@ function App() {
   const [selectedType, setSelectedType] = useState('DESK')
   const [connected, setConnected] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [selectedAgentId, setSelectedAgentId] = useState(null)
-  const [terminalLogs, setTerminalLogs] = useState([])
-  const [agentLogs, setAgentLogs] = useState({})
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null)
+  const [terminalLogs, setTerminalLogs] = useState<LogItem[]>([])
+  const [agentLogs, setAgentLogs] = useState<Record<string, LogItem[]>>({})
 
-  const canvasRef = useRef(null)
-  const wsRef = useRef(null)
-  const rendererRef = useRef(null)
-  const agentsRef = useRef([])
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const wsRef = useRef<WebSocket | null>(null)
+  const rendererRef = useRef<OfficeRenderer | null>(null)
+  const agentsRef = useRef<Agent[]>([])
 
   const hasUnsavedChanges = serverLayout && JSON.stringify(layout.furniture) !== JSON.stringify(serverLayout.furniture)
 
@@ -212,7 +239,23 @@ function App() {
     }
   }
 
-  const handleSavePreset = async (e) => {
+  const handleActivatePreset = async (layoutId: string) => {
+    try {
+      const res = await fetch(`/api/layouts/${layoutId}/activate`, {
+        method: 'POST',
+      })
+      if (res.ok) {
+        addLog(null, 'SYSTEM', 'info', `Activated layout preset: ${layoutId}`)
+      } else {
+        const errData = await res.json()
+        alert(`Error activating preset: ${errData.error || 'Unknown error'}`)
+      }
+    } catch (err) {
+      console.error('Error activating preset:', err)
+    }
+  }
+
+  const handleSavePreset = async (e?: FormEvent) => {
     if (e) e.preventDefault()
     if (!newPresetName.trim()) return
 
@@ -221,7 +264,7 @@ function App() {
       const res = await fetch('/api/layouts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newPresetName.trim(), layout })
+        body: JSON.stringify({ name: newPresetName.trim(), layout }),
       })
       if (res.ok) {
         const data = await res.json()
@@ -243,30 +286,14 @@ function App() {
     }
   }
 
-  const handleActivatePreset = async (layoutId) => {
-    try {
-      const res = await fetch(`/api/layouts/${layoutId}/activate`, {
-        method: 'POST'
-      })
-      if (res.ok) {
-        addLog(null, 'SYSTEM', 'info', `Activated layout preset: ${layoutId}`)
-      } else {
-        const errData = await res.json()
-        alert(`Error activating preset: ${errData.error || 'Unknown error'}`)
-      }
-    } catch (err) {
-      console.error('Error activating preset:', err)
-    }
-  }
-
-  const handleDeletePreset = async (layoutId, event) => {
+  const handleDeletePreset = async (layoutId: string, event?: MouseEvent) => {
     if (event) event.stopPropagation()
     if (layoutId === 'default') return
     if (!confirm('Are you sure you want to delete this layout preset?')) return
 
     try {
       const res = await fetch(`/api/layouts/${layoutId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
       })
       if (res.ok) {
         addLog(null, 'SYSTEM', 'info', `Deleted layout preset: ${layoutId}`)
@@ -282,15 +309,18 @@ function App() {
 
   const handleSaveCurrentChanges = async () => {
     if (activePresetId === 'default') {
-      const newName = prompt('The default layout is read-only. Please enter a name to save as a new preset:', 'My Custom Batcave')
+      const newName = prompt(
+        'The default layout is read-only. Please enter a name to save as a new preset:',
+        'My Custom Batcave',
+      )
       if (!newName || !newName.trim()) return
-      
+
       setIsSavingPreset(true)
       try {
         const res = await fetch('/api/layouts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: newName.trim(), layout })
+          body: JSON.stringify({ name: newName.trim(), layout }),
         })
         if (res.ok) {
           const data = await res.json()
@@ -311,14 +341,14 @@ function App() {
       return
     }
 
-    const activePreset = presets.find(p => p.id === activePresetId)
+    const activePreset = presets.find((p) => p.id === activePresetId)
     const presetName = activePreset ? activePreset.name : 'Custom Layout'
-    
+
     try {
       const res = await fetch('/api/layouts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: presetName, layout, layout_id: activePresetId })
+        body: JSON.stringify({ name: presetName, layout, layout_id: activePresetId }),
       })
       if (res.ok) {
         addLog(null, 'SYSTEM', 'info', `Changes saved to layout preset "${presetName}".`)
@@ -338,9 +368,15 @@ function App() {
     }
   }, [editMode])
 
-  const addLog = (agentId, agentName, type, text) => {
+  const addLog = (agentId: string | null, agentName: string | null, type: string, text: string) => {
     const timestamp = new Date().toLocaleTimeString()
-    const logItem = { id: `log_${Date.now()}_${Math.random()}`, timestamp, agentName: agentName || 'SYSTEM', type, text }
+    const logItem: LogItem = {
+      id: `log_${Date.now()}_${Math.random()}`,
+      timestamp,
+      agentName: agentName || 'SYSTEM',
+      type,
+      text,
+    }
 
     setTerminalLogs((prev) => [logItem, ...prev].slice(0, 100))
 
@@ -349,7 +385,7 @@ function App() {
         const currentList = prev[agentId] || []
         return {
           ...prev,
-          [agentId]: [logItem, ...currentList].slice(0, 50)
+          [agentId]: [logItem, ...currentList].slice(0, 50),
         }
       })
     }
@@ -426,7 +462,7 @@ function App() {
     }
   }, [layout])
 
-  const handleMouseMove = (event) => {
+  const handleMouseMove = (event: MouseEvent) => {
     if (!editMode || !rendererRef.current) return
     if (event.target !== canvasRef.current) {
       rendererRef.current.hoverTile = null
@@ -435,7 +471,7 @@ function App() {
     rendererRef.current.hoverTile = rendererRef.current.getGridPos(event.clientX, event.clientY)
   }
 
-  const handleMouseDown = (event) => {
+  const handleMouseDown = (event: MouseEvent) => {
     if (event.target !== canvasRef.current) return
 
     if (editMode) {
@@ -445,7 +481,7 @@ function App() {
       if (event.shiftKey || event.button === 2) {
         const target = rendererRef.current.getFurnitureAtTile(pos.col, pos.row)
         if (!target) return
-        const newFurniture = layout.furniture.filter((item) => item.id !== target.id)
+        const newFurniture = layout.furniture.filter((item: FurnitureItem) => item.id !== target.id)
         setLayout({ ...layout, furniture: newFurniture })
         return
       }
@@ -473,7 +509,7 @@ function App() {
       const clickX = event.clientX - rect.left
       const clickY = event.clientY - rect.top
 
-      const clickedAgent = Object.entries(rendererRef.current.agentStates).find(([id, state]) => {
+      const clickedAgent = Object.entries(rendererRef.current.agentStates).find(([, state]) => {
         const agentX = state.x + 16
         const agentY = state.y + 16
         const dist = Math.hypot(clickX - agentX, clickY - agentY)
@@ -506,30 +542,30 @@ function App() {
         addLog(null, 'SYSTEM', 'system', 'WebSocket link established with Batcomputer.')
       }
 
-      ws.onmessage = (event) => {
-        const msg = JSON.parse(event.data)
+      ws.onmessage = (event: MessageEvent) => {
+        const msg: Record<string, unknown> = JSON.parse(event.data as string)
 
         if (msg.type === 'init') {
-          setAgents(msg.agents || [])
+          setAgents((msg.agents as Agent[]) || [])
           if (msg.layout) {
-            setLayout(msg.layout)
-            setServerLayout(msg.layout)
-            if (msg.layout.id) {
-              setActivePresetId(msg.layout.id)
+            setLayout(msg.layout as Layout)
+            setServerLayout(msg.layout as Layout)
+            if ((msg.layout as Layout).id) {
+              setActivePresetId((msg.layout as Layout).id!)
             }
           }
-          addLog(null, 'SYSTEM', 'system', `Retrieved ${msg.agents?.length || 0} active agent telemetry links.`)
+          addLog(null, 'SYSTEM', 'system', `Retrieved ${((msg.agents as Agent[])?.length || 0)} active agent telemetry links.`)
           return
         }
 
         if (msg.type === 'layout_updated') {
           if (msg.layout) {
-            setLayout(msg.layout)
-            setServerLayout(msg.layout)
-            if (msg.layout.id) {
-              setActivePresetId(msg.layout.id)
+            setLayout(msg.layout as Layout)
+            setServerLayout(msg.layout as Layout)
+            if ((msg.layout as Layout).id) {
+              setActivePresetId((msg.layout as Layout).id!)
             }
-            addLog(null, 'SYSTEM', 'info', `Layout configuration updated to "${msg.layout.name || 'Custom'}"`)
+            addLog(null, 'SYSTEM', 'info', `Layout configuration updated to "${(msg.layout as Layout).name || 'Custom'}"`)
             if (editModeRef.current) {
               void fetchPresets()
             }
@@ -539,43 +575,46 @@ function App() {
 
         if (msg.type === 'agent_updated') {
           setAgents((prev) => {
-            const found = prev.some((agent) => agent.id === msg.agent.id)
-            const oldAgent = prev.find((a) => a.id === msg.agent.id)
-            
+            const updated = msg.agent as Agent
+            const found = prev.some((agent) => agent.id === updated.id)
+            const oldAgent = prev.find((a) => a.id === updated.id)
+
             if (oldAgent) {
-              if (oldAgent.status !== msg.agent.status) {
-                addLog(msg.agent.id, msg.agent.name, msg.agent.status, `Status: ${msg.agent.status} - "${msg.agent.task || 'Idle'}"`)
-              } else if (oldAgent.task !== msg.agent.task && msg.agent.task) {
-                addLog(msg.agent.id, msg.agent.name, 'info', `Task: "${msg.agent.task}"`)
-              } else if (oldAgent.location !== msg.agent.location) {
-                addLog(msg.agent.id, msg.agent.name, 'system', `Relocated to: ${msg.agent.location}`)
+              if (oldAgent.status !== updated.status) {
+                addLog(updated.id, updated.name, updated.status, `Status: ${updated.status} - "${updated.task || 'Idle'}"`)
+              } else if (oldAgent.task !== updated.task && updated.task) {
+                addLog(updated.id, updated.name, 'info', `Task: "${updated.task}"`)
+              } else if (oldAgent.location !== updated.location) {
+                addLog(updated.id, updated.name, 'system', `Relocated to: ${updated.location}`)
               }
             } else {
-              addLog(msg.agent.id, msg.agent.name, 'info', `Monitoring started: "${msg.agent.task || 'Idle'}"`)
+              addLog(updated.id, updated.name, 'info', `Monitoring started: "${updated.task || 'Idle'}"`)
             }
 
-            if (!found) return [...prev, msg.agent]
-            return prev.map((agent) => (agent.id === msg.agent.id ? msg.agent : agent))
+            if (!found) return [...prev, updated]
+            return prev.map((agent) => (agent.id === updated.id ? updated : agent))
           })
           return
         }
 
         if (msg.type === 'agent_created') {
           setAgents((prev) => {
-            if (prev.some((agent) => agent.id === msg.agent.id)) return prev
-            addLog(msg.agent.id, msg.agent.name, 'info', `Agent initialized: "${msg.agent.task || 'Idle'}"`)
-            return [...prev, msg.agent]
+            const created = msg.agent as Agent
+            if (prev.some((agent) => agent.id === created.id)) return prev
+            addLog(created.id, created.name, 'info', `Agent initialized: "${created.task || 'Idle'}"`)
+            return [...prev, created]
           })
           return
         }
 
         if (msg.type === 'agent_removed') {
           setAgents((prev) => {
-            const removed = prev.find((agent) => agent.id === msg.agent_id)
+            const agentId = msg.agent_id as string
+            const removed = prev.find((agent) => agent.id === agentId)
             if (removed) {
-              addLog(msg.agent_id, removed.name, 'warn', 'Telemetry signal offline.')
+              addLog(agentId, removed.name, 'warn', 'Telemetry signal offline.')
             }
-            return prev.filter((agent) => agent.id !== msg.agent_id)
+            return prev.filter((agent) => agent.id !== agentId)
           })
         }
       }
@@ -634,7 +673,7 @@ function App() {
     agents,
     assetLoader.characters.length || 1,
   )
-  const agentCards = getStaffAgents(agents).map((agent) => {
+  const agentCards: AgentCard[] = getStaffAgents(agents).map((agent) => {
     const visual = agentVisualAssignments.get(agent.id) || { characterIndex: 0, hueShift: 0 }
     const replayToolLabel = agent.replay_tool ? String(agent.replay_tool).replace(/_/g, ' ') : null
     const displayTask =
@@ -671,13 +710,13 @@ function App() {
           {editMode && (
             <button
               className={`toolbar-button save-changes-btn ${hasUnsavedChanges ? 'has-unsaved' : ''}`}
-              onClick={handleSaveCurrentChanges}
+              onClick={() => void handleSaveCurrentChanges()}
               disabled={isSavingPreset}
               style={{
                 borderColor: hasUnsavedChanges ? '#ff9f1c' : 'var(--accent)',
                 background: hasUnsavedChanges ? 'rgba(255, 159, 28, 0.15)' : 'rgba(16, 21, 33, 0.7)',
                 color: hasUnsavedChanges ? '#ffe0b2' : 'var(--text-main)',
-                marginRight: '8px'
+                marginRight: '8px',
               }}
             >
               {isSavingPreset ? 'Saving...' : activePresetId === 'default' ? 'Save as New' : 'Save Changes'}
@@ -715,7 +754,6 @@ function App() {
           onMouseDown={handleMouseDown}
           onContextMenu={(event) => event.preventDefault()}
         >
-
           {loading ? (
             <div className="loading-panel pixel-panel">
               <span className="loading-title">Loading Assets</span>
@@ -727,7 +765,7 @@ function App() {
 
           {!editMode && selectedAgentId && (
             (() => {
-              const selectedAgentObj = agentCards.find(a => a.id === selectedAgentId)
+              const selectedAgentObj = agentCards.find((a) => a.id === selectedAgentId)
               const selectedAgentLogs = agentLogs[selectedAgentId] || []
               if (!selectedAgentObj) return null
 
@@ -739,7 +777,7 @@ function App() {
                       CLOSE
                     </button>
                   </div>
-                  
+
                   <div className="inspector-avatar-box">
                     {selectedAgentObj.avatar ? (
                       <img src={selectedAgentObj.avatar} alt={selectedAgentObj.name} />
@@ -815,7 +853,7 @@ function App() {
                   <div key={zone.id} className="zone-item">
                     <span
                       className="zone-swatch"
-                      style={{ background: zone.accent || zone.color || '#7dc3ff' }}
+                      style={{ background: (zone as Zone & { accent?: string }).accent || (zone as Zone & { color?: string }).color || '#7dc3ff' }}
                     />
                     <div className="zone-copy">
                       <strong>{zone.label || zone.name}</strong>
@@ -859,7 +897,7 @@ function App() {
                   <select
                     className="preset-select"
                     value={activePresetId}
-                    onChange={(e) => handleActivatePreset(e.target.value)}
+                    onChange={(e) => { void handleActivatePreset(e.target.value) }}
                   >
                     {presets.map((preset) => (
                       <option key={preset.id} value={preset.id}>
@@ -870,7 +908,7 @@ function App() {
                   {activePresetId !== 'default' && (
                     <button
                       className="toolbar-button preset-btn-small preset-btn-delete"
-                      onClick={(e) => handleDeletePreset(activePresetId, e)}
+                      onClick={(e) => { void handleDeletePreset(activePresetId, e) }}
                       title="Delete Preset"
                     >
                       Delete
@@ -885,16 +923,16 @@ function App() {
                       flex: 1,
                       borderColor: hasUnsavedChanges ? '#ff9f1c' : 'var(--line-soft)',
                       color: hasUnsavedChanges ? '#ffe0b2' : 'var(--text-main)',
-                      background: hasUnsavedChanges ? 'rgba(255, 159, 28, 0.12)' : 'rgba(16, 21, 33, 0.7)'
+                      background: hasUnsavedChanges ? 'rgba(255, 159, 28, 0.12)' : 'rgba(16, 21, 33, 0.7)',
                     }}
-                    onClick={handleSaveCurrentChanges}
+                    onClick={() => { void handleSaveCurrentChanges() }}
                   >
                     {activePresetId === 'default' ? 'Save as New' : 'Save Changes'}
                     {hasUnsavedChanges && <span className="unsaved-indicator" style={{ marginLeft: '6px' }} />}
                   </button>
                 </div>
 
-                <form onSubmit={handleSavePreset} style={{ display: 'flex', gap: '8px', width: '100%' }}>
+                <form onSubmit={(e) => { void handleSavePreset(e) }} style={{ display: 'flex', gap: '8px', width: '100%' }}>
                   <input
                     type="text"
                     className="preset-input"
@@ -929,7 +967,7 @@ function App() {
               </div>
 
               <p className="editor-hint">Shift or right-click to remove a piece.</p>
-              <button className="toolbar-button editor-reset-button" onClick={resetLayout}>
+              <button className="toolbar-button editor-reset-button" onClick={() => { void resetLayout() }}>
                 Reset to Baseline
               </button>
             </aside>
@@ -951,8 +989,8 @@ function App() {
                 <p className="empty-state">No active agents yet.</p>
               ) : (
                 agentCards.map((agent) => (
-                  <div 
-                    key={agent.id} 
+                  <div
+                    key={agent.id}
                     className={`staff-item ${agent.isCompact ? 'is-compact' : ''} ${selectedAgentId === agent.id ? 'is-selected-hud' : ''}`}
                     onClick={() => setSelectedAgentId(agent.id)}
                     style={{ cursor: 'pointer' }}
@@ -982,7 +1020,6 @@ function App() {
           </aside>
         </section>
 
-        {/* Real-time terminal log console */}
         <div className="terminal-console">
           <div className="terminal-header">
             <div className="terminal-title">Batcomputer Telemetry Log Stream</div>

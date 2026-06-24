@@ -9,12 +9,12 @@ export default defineConfig({
       '/api': 'http://localhost:9000',
       '/ws': {
         target: 'ws://localhost:9000',
-        ws: true
-      }
-    }
+        ws: true,
+      },
+    },
   },
   build: {
     outDir: 'dist',
-    assetsDir: 'assets'
-  }
+    assetsDir: 'assets',
+  },
 })

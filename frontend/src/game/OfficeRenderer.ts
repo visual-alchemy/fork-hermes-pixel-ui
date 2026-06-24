@@ -1,3 +1,6 @@
+import type { Layout, Zone, FurnitureItem, TilePos, InteractionTarget, OfficeTheme, Agent, AgentState, Door } from '../types'
+import type { AssetLoader, FurnitureAsset } from './AssetLoader'
+
 const BASE_TILE_SIZE = 16
 const DEFAULT_SCALE = 5
 const SCALE_BOOST = 1.1
@@ -7,14 +10,85 @@ const ROAM_DELAY_MIN = 2400
 const ROAM_DELAY_MAX = 5200
 const MIN_WORK_VISUAL_MS = 6500
 
-function clampRotation(rotation = 0) {
+function clampRotation(rotation = 0): number {
   return ((rotation % 4) + 4) % 4
 }
 
+interface RenderableEntry {
+  sortY: number
+  draw: (ctx: CanvasRenderingContext2D) => void
+}
+
+interface FurnitureSprite {
+  file: string
+  footprintW: number
+  footprintH: number
+  renderOffsetX?: number
+  renderOffsetY?: number
+  sortOffset?: number
+  canPlaceOnWalls?: boolean
+  canPlaceOnSurfaces?: boolean
+}
+
+interface PlacementResult {
+  x: number
+  y: number
+  sortY: number
+}
+
+interface WorkFocusEntry {
+  location: string
+  activity: string
+  task?: string
+  replay: boolean
+  replay_tool?: string
+  until: number
+}
+
+interface MovementGroup {
+  key: string
+  agents: Agent[]
+}
+
+interface SurfaceConfig {
+  floorIndex: number
+  tint?: string
+  surface: string
+}
+
+interface InteractionTargetExt extends InteractionTarget {
+  poseOverride?: string
+  replays?: number
+}
+
 export class OfficeRenderer {
-  constructor(canvas, assetLoader, layout) {
+  canvas: HTMLCanvasElement
+  ctx: CanvasRenderingContext2D
+  assetLoader: AssetLoader
+  layout: Layout
+  scale: number = DEFAULT_SCALE
+  tileSize: number = (BASE_TILE_SIZE * DEFAULT_SCALE) / 2
+
+  animationFrame: number = 0
+  lastUpdate: number = Date.now()
+
+  agentStates: Record<string, AgentState> = {}
+  agentWorkFocus: Map<string, WorkFocusEntry> = new Map()
+  blockedTiles: Set<string> = new Set()
+
+  editMode: boolean = false
+  selectedFurnitureType: string | null = null
+  hoverTile: TilePos | null = { col: 0, row: 0 }
+  selectedAgentId: string | null = null
+
+  offsetX: number = 0
+  offsetY: number = 0
+  viewportWidth: number = 0
+  viewportHeight: number = 0
+
+  constructor(canvas: HTMLCanvasElement, assetLoader: AssetLoader, layout: Layout) {
     this.canvas = canvas
-    this.ctx = canvas.getContext('2d')
+    this.ctx = canvas.getContext('2d')!
     this.assetLoader = assetLoader
     this.layout = layout
     this.scale = DEFAULT_SCALE
@@ -40,25 +114,25 @@ export class OfficeRenderer {
     this.updateCollisionMap()
   }
 
-  getTheme() {
+  getTheme(): OfficeTheme {
     const { width, height } = this.layout.dimensions
+    const t = this.layout.theme || ({} as Partial<OfficeTheme>)
     return {
-      walkwayFloorIndex: 0,
-      walkwaySurface: 'hall',
-      wallColor: '#20283a',
-      trimColor: '#5f7292',
-      shadowColor: 'rgba(0, 0, 0, 0.28)',
-      officeBounds: { x: 1, y: 1, width: width - 2, height: height - 2 },
-      ...(this.layout.theme || {}),
+      walkwayFloorIndex: t.walkwayFloorIndex ?? 0,
+      walkwaySurface: t.walkwaySurface ?? 'hall',
+      wallColor: t.wallColor ?? '#20283a',
+      trimColor: t.trimColor ?? '#5f7292',
+      shadowColor: t.shadowColor ?? 'rgba(0, 0, 0, 0.28)',
+      officeBounds: t.officeBounds ?? { x: 1, y: 1, width: width - 2, height: height - 2 },
     }
   }
 
-  setEditMode(enabled, type = null) {
+  setEditMode(enabled: boolean, type: string | null = null): void {
     this.editMode = enabled
     this.selectedFurnitureType = type
   }
 
-  resize() {
+  resize(): void {
     const container = this.canvas.parentElement
     if (!container) return
 
@@ -102,7 +176,7 @@ export class OfficeRenderer {
     }
   }
 
-  getGridPos(clientX, clientY) {
+  getGridPos(clientX: number, clientY: number): TilePos {
     const rect = this.canvas.getBoundingClientRect()
     const x = clientX - rect.left
     const y = clientY - rect.top
@@ -115,26 +189,26 @@ export class OfficeRenderer {
     }
   }
 
-  tileToScreen(col, row) {
+  tileToScreen(col: number, row: number): { x: number; y: number } {
     return {
       x: this.offsetX + col * this.tileSize,
       y: this.offsetY + row * this.tileSize,
     }
   }
 
-  updateCollisionMap() {
+  updateCollisionMap(): void {
     this.blockedTiles.clear()
 
     if (!this.layout.furniture) return
 
-    this.layout.furniture.forEach((item) => {
+    this.layout.furniture.forEach((item: FurnitureItem) => {
       const asset = this.assetLoader.getFurniture((item.type || '').toUpperCase())
       const sprite = this.resolveFurnitureSprite(asset, item)
       if (!sprite) return
       if (sprite.canPlaceOnWalls || sprite.canPlaceOnSurfaces) return
 
-      const startX = item.x !== undefined ? item.x : item.col
-      const startY = item.y !== undefined ? item.y : item.row
+      const startX: number = item.x !== undefined ? item.x : (item.col ?? 0)
+      const startY: number = item.y !== undefined ? item.y : (item.row ?? 0)
 
       for (let dw = 0; dw < sprite.footprintW; dw += 1) {
         for (let dh = 0; dh < sprite.footprintH; dh += 1) {
@@ -144,11 +218,11 @@ export class OfficeRenderer {
     })
   }
 
-  findPath(startCol, startRow, endCol, endRow) {
+  findPath(startCol: number, startRow: number, endCol: number, endRow: number): TilePos[] {
     if (startCol === endCol && startRow === endRow) return []
 
-    const key = (col, row) => `${col},${row}`
-    const queue = [{ col: startCol, row: startRow, path: [] }]
+    const key = (col: number, row: number) => `${col},${row}`
+    const queue: Array<{ col: number; row: number; path: TilePos[] }> = [{ col: startCol, row: startRow, path: [] }]
     const visited = new Set([key(startCol, startRow)])
     const directions = [
       { col: 0, row: -1 },
@@ -158,7 +232,7 @@ export class OfficeRenderer {
     ]
 
     while (queue.length > 0) {
-      const { col, row, path } = queue.shift()
+      const { col, row, path } = queue.shift()!
 
       if (col === endCol && row === endRow) return path
 
@@ -191,7 +265,7 @@ export class OfficeRenderer {
     return []
   }
 
-  render(agents, layoutState = null) {
+  render(agents: Agent[], layoutState: Layout | null = null): void {
     if (!this.assetLoader.isLoaded) return
 
     const layoutChanged = layoutState && layoutState !== this.layout
@@ -229,7 +303,7 @@ export class OfficeRenderer {
       this.drawGrid()
     }
 
-    const renderables = this.collectRenderables(visualAgents)
+    const renderables: RenderableEntry[] = this.collectRenderables(visualAgents)
 
     if (this.editMode && this.selectedFurnitureType) {
       this.addGhostToRenderables(renderables)
@@ -240,9 +314,9 @@ export class OfficeRenderer {
     this.drawZoneLabels()
   }
 
-  getVisualAgents(agents) {
+  getVisualAgents(agents: Agent[]): Agent[] {
     const now = Date.now()
-    const activeAgentIds = new Set(agents.map((agent) => agent.id))
+    const activeAgentIds = new Set(agents.map((agent: Agent) => agent.id))
     const workLocations = new Set(['desk', 'library', 'meeting'])
 
     this.agentWorkFocus.forEach((focus, agentId) => {
@@ -251,7 +325,7 @@ export class OfficeRenderer {
       }
     })
 
-    return agents.map((agent) => {
+    return agents.map((agent: Agent) => {
       const isWorkFocus =
         agent.status === 'working' &&
         workLocations.has(agent.location) &&
@@ -290,7 +364,7 @@ export class OfficeRenderer {
     })
   }
 
-  drawBackdrop() {
+  drawBackdrop(): void {
     const gradient = this.ctx.createLinearGradient(0, 0, 0, this.viewportHeight)
     gradient.addColorStop(0, '#20283a')
     gradient.addColorStop(1, '#10131c')
@@ -375,20 +449,20 @@ export class OfficeRenderer {
     })
   }
 
-  drawWallShell(zone, outerX, outerY, outerW, outerH, border) {
+  drawWallShell(zone: Zone, outerX: number, outerY: number, outerW: number, outerH: number, border: number) {
     const theme = this.getTheme()
     const wallColor = zone.wallColor || theme.wallColor
     const trimColor = zone.trimColor || theme.trimColor
     const doors = Array.isArray(zone.doors) ? zone.doors : []
 
     const horizontalDoors = {
-      top: doors.filter((door) => door.side === 'top'),
-      bottom: doors.filter((door) => door.side === 'bottom'),
+      top: doors.filter((door: Door) => door.side === 'top'),
+      bottom: doors.filter((door: Door) => door.side === 'bottom'),
     }
 
     const verticalDoors = {
-      left: doors.filter((door) => door.side === 'left'),
-      right: doors.filter((door) => door.side === 'right'),
+      left: doors.filter((door: Door) => door.side === 'left'),
+      right: doors.filter((door: Door) => door.side === 'right'),
     }
 
     this.drawHorizontalWall(
@@ -433,8 +507,8 @@ export class OfficeRenderer {
     )
   }
 
-  drawHorizontalWall(x, y, width, height, doors, offset, trimColor, wallColor) {
-    const segments = []
+  drawHorizontalWall(x: number, y: number, width: number, height: number, doors: Door[], offset: number, trimColor: string, wallColor: string) {
+    const segments: Array<{ x: number; width: number }> = []
     let cursor = x
 
     const sortedDoors = [...doors].sort((left, right) => left.start - right.start)
@@ -462,8 +536,8 @@ export class OfficeRenderer {
     })
   }
 
-  drawVerticalWall(x, y, width, height, doors, offset, trimColor, wallColor) {
-    const segments = []
+  drawVerticalWall(x: number, y: number, width: number, height: number, doors: Door[], offset: number, trimColor: string, wallColor: string) {
+    const segments: Array<{ y: number; height: number }> = []
     let cursor = y
 
     const sortedDoors = [...doors].sort((left, right) => left.start - right.start)
@@ -489,7 +563,7 @@ export class OfficeRenderer {
     })
   }
 
-  drawFramedArea(col, row, width, height, wallColor, trimColor) {
+  drawFramedArea(col: number, row: number, width: number, height: number, wallColor: string, trimColor: string) {
     const { x, y } = this.tileToScreen(col - 1, row - 1)
     this.ctx.fillStyle = wallColor
     this.ctx.fillRect(x, y, (width + 2) * this.tileSize, (height + 2) * this.tileSize)
@@ -504,7 +578,7 @@ export class OfficeRenderer {
     )
   }
 
-  drawSurfaceArea(col, row, width, height, options = {}) {
+  drawSurfaceArea(col: number, row: number, width: number, height: number, options: SurfaceConfig = { floorIndex: 0, surface: 'hall' }) {
     const { floorIndex = 0, tint = null, surface = 'hall' } = options
     const palette = this.getSurfacePalette(surface)
 
@@ -854,8 +928,8 @@ export class OfficeRenderer {
       const sprite = this.resolveFurnitureSprite(asset, item)
       if (!sprite) continue
 
-      const startX = item.x !== undefined ? item.x : item.col
-      const startY = item.y !== undefined ? item.y : item.row
+      const startX: number = item.x !== undefined ? item.x : (item.col ?? 0)
+      const startY: number = item.y !== undefined ? item.y : (item.row ?? 0)
       const endX = startX + sprite.footprintW - 1
       const endY = startY + sprite.footprintH - 1
 
@@ -1143,8 +1217,8 @@ export class OfficeRenderer {
     this.layout.furniture.forEach((item) => {
       if (String(item.type || '').toLowerCase() !== type) return
 
-      const itemCol = item.x !== undefined ? item.x : item.col
-      const itemRow = item.y !== undefined ? item.y : item.row
+      const itemCol: number = item.x !== undefined ? item.x : (item.col ?? 0)
+      const itemRow: number = item.y !== undefined ? item.y : (item.row ?? 0)
       const distance = Math.abs(itemCol - targetTile.col) + Math.abs(itemRow - targetTile.row)
 
       if (distance > maxDistance || distance >= bestDistance) return
@@ -1179,9 +1253,9 @@ export class OfficeRenderer {
       return basePlacement
     }
 
-    const localCol = startX - support.startX
-    const localRow = startY - support.startY
-    const supportOrigin = this.tileToScreen(support.startX, support.startY)
+    const localCol = startX - support.startX!
+    const localRow = startY - support.startY!
+    const supportOrigin = this.tileToScreen(support.startX!, support.startY!)
     const scaleMultiplier = 0.78
     const drawWidth = sprite.width * (this.scale / 2) * scaleMultiplier
     const drawHeight = sprite.height * (this.scale / 2) * scaleMultiplier
