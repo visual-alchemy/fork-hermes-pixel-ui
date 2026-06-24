@@ -700,11 +700,11 @@ export class OfficeRenderer {
 
     this.ctx.font = `600 ${Math.max(20, this.scale * 3.35)}px "FS Pixel Sans", monospace`
     this.ctx.textBaseline = 'top'
-    const maxWidth = Math.max(88, (zone.labelMaxWidthTiles || 3.4) * this.tileSize)
-    const labelWidth = Math.min(
-      maxWidth,
-      Math.max(96, this.ctx.measureText(label).width + paddingX * 2),
-    )
+    const maxWidth = Math.max(88, Math.max(
+      (zone.labelMaxWidthTiles || 3.4) * this.tileSize,
+      this.ctx.measureText(label).width + paddingX * 2,
+    ))
+    const labelWidth = maxWidth
     const align = zone.labelAnchor?.align || 'left'
     const unclampedX =
       align === 'center' ? x - labelWidth / 2 : align === 'right' ? x - labelWidth : x + this.scale + 4
@@ -726,10 +726,6 @@ export class OfficeRenderer {
     this.ctx.strokeStyle = 'rgba(40, 46, 63, 0.62)'
     this.ctx.lineWidth = 2
     this.ctx.strokeRect(chipX + 1, chipY + 1, labelWidth - 2, labelHeight - 2)
-
-    this.ctx.beginPath()
-    this.ctx.rect(chipX + paddingX, chipY + 2, labelWidth - paddingX * 2, labelHeight - 4)
-    this.ctx.clip()
 
     this.ctx.fillStyle = '#1a2130'
     this.ctx.textAlign = 'left'

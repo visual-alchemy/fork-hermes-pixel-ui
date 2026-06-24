@@ -23,7 +23,7 @@
     {
       "id": "library",
       "name": "Library",
-      "label": "Data Vault",
+      "label": "Oracle's Data Vault",
       "style": "open",
       "surface": "wood",
       "outline": false,
@@ -89,7 +89,7 @@
     {
       "id": "desk",
       "name": "Desk Area",
-      "label": "Surveillance Ops",
+      "label": "Surveillance Operations",
       "style": "open",
       "surface": "wood",
       "outline": false,
@@ -129,7 +129,7 @@
     {
       "id": "meeting",
       "name": "Meeting",
-      "label": "Briefing Room",
+      "label": "Tactical Briefing Room",
       "style": "room",
       "surface": "tile-blue",
       "showLabel": true,
