@@ -1521,6 +1521,7 @@ export class OfficeRenderer {
     const activity = this.getAgentActivity(agent)
     const candidates = zone ? this.getZoneTargetCandidates(zone, activity) : []
     const anchorTile = this.getAgentTargetTile(agent, index, zone, candidates)
+    const zoneChanged = this.agentStates[agent.id]?.zoneId !== (zone?.id)
     const targetTile = this.getDesiredAgentTarget(agent, index, zone, candidates, anchorTile)
     const targetX = this.offsetX + targetTile.col * this.tileSize
     const targetY = this.offsetY + targetTile.row * this.tileSize
@@ -1555,7 +1556,6 @@ export class OfficeRenderer {
       state.finalTarget.col !== targetTile.col ||
       state.finalTarget.row !== targetTile.row
     ) {
-      const zoneChanged = state.zoneId !== (zone?.id)
       state.zoneId = zone?.id
 
       if (zoneChanged) {
