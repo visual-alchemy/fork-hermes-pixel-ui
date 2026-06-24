@@ -193,6 +193,8 @@ function App() {
   const rendererRef = useRef(null)
   const agentsRef = useRef([])
 
+  const hasUnsavedChanges = serverLayout && JSON.stringify(layout.furniture) !== JSON.stringify(serverLayout.furniture)
+
   const editModeRef = useRef(editMode)
   useEffect(() => {
     editModeRef.current = editMode
@@ -426,10 +428,16 @@ function App() {
 
   const handleMouseMove = (event) => {
     if (!editMode || !rendererRef.current) return
+    if (event.target !== canvasRef.current) {
+      rendererRef.current.hoverTile = null
+      return
+    }
     rendererRef.current.hoverTile = rendererRef.current.getGridPos(event.clientX, event.clientY)
   }
 
   const handleMouseDown = (event) => {
+    if (event.target !== canvasRef.current) return
+
     if (editMode) {
       if (!rendererRef.current) return
       const pos = rendererRef.current.getGridPos(event.clientX, event.clientY)
@@ -659,6 +667,22 @@ function App() {
         </div>
 
         <div className="topbar-side">
+          {editMode && (
+            <button
+              className={`toolbar-button save-changes-btn ${hasUnsavedChanges ? 'has-unsaved' : ''}`}
+              onClick={handleSaveCurrentChanges}
+              disabled={isSavingPreset}
+              style={{
+                borderColor: hasUnsavedChanges ? '#ff9f1c' : 'var(--accent)',
+                background: hasUnsavedChanges ? 'rgba(255, 159, 28, 0.15)' : 'rgba(16, 21, 33, 0.7)',
+                color: hasUnsavedChanges ? '#ffe0b2' : 'var(--text-main)',
+                marginRight: '8px'
+              }}
+            >
+              {isSavingPreset ? 'Saving...' : activePresetId === 'default' ? 'Save as New' : 'Save Changes'}
+              {hasUnsavedChanges && <span className="unsaved-indicator" />}
+            </button>
+          )}
           <button
             className={`toolbar-button ${editMode ? 'is-active' : ''}`}
             onClick={() => setEditMode((value) => !value)}
@@ -855,11 +879,17 @@ function App() {
 
                 <div className="preset-button-row">
                   <button
-                    className="toolbar-button preset-btn-small"
-                    style={{ flex: 1 }}
+                    className={`toolbar-button preset-btn-small ${hasUnsavedChanges ? 'preset-btn-unsaved' : ''}`}
+                    style={{
+                      flex: 1,
+                      borderColor: hasUnsavedChanges ? '#ff9f1c' : 'var(--line-soft)',
+                      color: hasUnsavedChanges ? '#ffe0b2' : 'var(--text-main)',
+                      background: hasUnsavedChanges ? 'rgba(255, 159, 28, 0.12)' : 'rgba(16, 21, 33, 0.7)'
+                    }}
                     onClick={handleSaveCurrentChanges}
                   >
                     {activePresetId === 'default' ? 'Save as New' : 'Save Changes'}
+                    {hasUnsavedChanges && <span className="unsaved-indicator" style={{ marginLeft: '6px' }} />}
                   </button>
                 </div>
 
