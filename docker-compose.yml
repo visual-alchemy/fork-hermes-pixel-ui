@@ -6,7 +6,7 @@ services:
     image: hermes-pixel-ui:latest
     container_name: hermes-pixel-ui
     ports:
-      - "9000:9000"
+      - "9090:9000"
     volumes:
       - ${HOME}/.hermes/sessions:/root/.hermes/sessions:ro
       - ./backend/presets:/app/backend/presets
