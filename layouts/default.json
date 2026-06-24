@@ -100,7 +100,7 @@
       "surface": "wood",
       "outline": false,
       "showLabel": true,
-      "labelAnchor": { "col": 7.5, "row": 24, "align": "center", "offsetY": 8 },
+      "labelAnchor": { "col": 7.5, "row": 8.2, "align": "center", "offsetY": 4 },
       "labelMaxWidthTiles": 5.0,
       "bounds": {
         "x": 2,
