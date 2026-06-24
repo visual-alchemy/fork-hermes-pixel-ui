@@ -901,8 +901,10 @@ async def handle_hermes_event(event: HermesEvent):
         task = "Error"
         is_replay = False
 
-    # Si el agente no existe, crearlo
+    # Si el agente no existe, solo crearlo si es hermes_current o ya existía
     if agent_id not in state.agents:
+        if agent_id != "hermes_current":
+            return
         agent_name = event.data.get("name", f"Hermes-{agent_id[:6]}")
         state.add_agent(agent_id, agent_name)
     
@@ -944,9 +946,8 @@ async def lifespan(app: FastAPI):
     hermes_bridge.set_event_callback(handle_hermes_event)
     bridge_task = asyncio.create_task(hermes_bridge.start_listening())
 
-    # Init SQLite agent store
+    # Init SQLite agent store (DB for crash recovery, fresh start each session)
     await state.store.init()
-    await state._load_from_file()
     
     yield
     
