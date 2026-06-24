@@ -1030,7 +1030,7 @@ export class OfficeRenderer {
   getMovementGroupKey(agent, zone = this.getAgentZone(agent), activity = this.getAgentActivity(agent)) {
     if (!zone) return '__default__'
 
-    if (zone.id === 'desk' && activity === 'computer') {
+    if ((zone.id === 'desk' || zone.id === 'lab') && activity === 'computer') {
       return `${zone.id}:${activity}`
     }
 
@@ -1060,7 +1060,7 @@ export class OfficeRenderer {
   }
 
   isDeskComputerOccupant(agent, zone = this.getAgentZone(agent), activity = this.getAgentActivity(agent)) {
-    return Boolean(zone) && zone.id === 'desk' && activity === 'computer'
+    return Boolean(zone) && (zone.id === 'desk' || zone.id === 'lab') && activity === 'computer'
   }
 
   hasActiveMeeting(agents) {
@@ -1071,7 +1071,7 @@ export class OfficeRenderer {
   }
 
   isDeskComputerWorker(agent, zone = this.getAgentZone(agent), activity = this.getAgentActivity(agent)) {
-    return Boolean(zone) && zone.id === 'desk' && activity === 'computer' && agent.status === 'working'
+    return Boolean(zone) && (zone.id === 'desk' || zone.id === 'lab') && activity === 'computer' && agent.status === 'working'
   }
 
   isDeskComputerFocused(
@@ -1564,6 +1564,7 @@ export class OfficeRenderer {
 
     return Boolean(zone) && (
       (zone.id === 'desk' && activity === 'computer') ||
+      (zone.id === 'lab' && activity === 'computer') ||
       (zone.id === 'library' && activity === 'research') ||
       (zone.id === 'cafe' && activity === 'break') ||
       (zone.id === 'lounge' && activity === 'rest') ||

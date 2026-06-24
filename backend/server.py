@@ -454,6 +454,7 @@ LOCATION_ACTIVITY_MAP = {
     "meeting": "meeting",
     "cafe": "break",
     "lounge": "rest",
+    "lab": "computer",
 }
 
 
@@ -464,6 +465,7 @@ def _score_location(text: str) -> Dict[str, int]:
         "library": 0,
         "meeting": 0,
         "cafe": 0,
+        "lab": 0,
     }
 
     weighted_rules = {
@@ -540,6 +542,21 @@ def _score_location(text: str) -> Dict[str, int]:
             ("pendiente", 3),
             ("cuando quieras", 4),
         ],
+        "lab": [
+            ("test", 4),
+            ("testing", 4),
+            ("verify", 4),
+            ("verification", 4),
+            ("assert", 3),
+            ("pytest", 5),
+            ("unittest", 5),
+            ("run_tests", 5),
+            ("experiment", 4),
+            ("science", 4),
+            ("applied", 3),
+            ("compile", 3),
+            ("build", 3),
+        ],
     }
 
     for location, rules in weighted_rules.items():
@@ -556,6 +573,7 @@ def _classify_focus(tools: List[str], task: str, tool_context: str = "") -> tupl
         "library": 0,
         "meeting": 0,
         "cafe": 0,
+        "lab": 0,
     }
 
     for tool_name in tools:
@@ -572,7 +590,8 @@ def _classify_focus(tools: List[str], task: str, tool_context: str = "") -> tupl
         scores[location] += value
 
     priority = {
-        "meeting": 4,
+        "meeting": 5,
+        "lab": 4,
         "library": 3,
         "desk": 2,
         "cafe": 1,
@@ -646,13 +665,13 @@ async def handle_hermes_event(event: HermesEvent):
             last_work_activity = current_agent.get("last_work_activity", "computer")
 
             if (
-                previous_location in {"desk", "library", "meeting"}
+                previous_location in {"desk", "library", "meeting", "lab"}
                 and _is_recent_work_focus(current_agent)
-                and last_work_location in {"desk", "library", "meeting"}
+                and last_work_location in {"desk", "library", "meeting", "lab"}
             ):
                 location = last_work_location
                 activity = last_work_activity
-            elif previous_location in {"desk", "library", "meeting"}:
+            elif previous_location in {"desk", "library", "meeting", "lab"}:
                 location = "cafe"
                 activity = "break"
             else:
@@ -690,7 +709,7 @@ async def handle_hermes_event(event: HermesEvent):
         replay_tool=replay_tool,
     )
 
-    if status == "working" and location in {"desk", "library", "meeting"}:
+    if status == "working" and location in {"desk", "library", "meeting", "lab"}:
         agent = state.update_agent(
             agent_id,
             last_work_location=location,
