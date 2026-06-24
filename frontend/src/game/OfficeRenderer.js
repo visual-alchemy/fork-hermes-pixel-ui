@@ -757,16 +757,19 @@ export class OfficeRenderer {
       this.ctx.stroke()
     }
 
-    this.ctx.fillStyle = 'rgba(125, 195, 255, 0.28)'
-    this.ctx.fillRect(
-      this.offsetX + this.hoverTile.col * this.tileSize,
-      this.offsetY + this.hoverTile.row * this.tileSize,
-      this.tileSize,
-      this.tileSize,
-    )
+    if (this.hoverTile) {
+      this.ctx.fillStyle = 'rgba(125, 195, 255, 0.28)'
+      this.ctx.fillRect(
+        this.offsetX + this.hoverTile.col * this.tileSize,
+        this.offsetY + this.hoverTile.row * this.tileSize,
+        this.tileSize,
+        this.tileSize,
+      )
+    }
   }
 
   addGhostToRenderables(renderables) {
+    if (!this.hoverTile) return
     const asset = this.assetLoader.getFurniture(this.selectedFurnitureType.toUpperCase())
     const sprite = this.resolveFurnitureSprite(asset, { rotation: 0 })
     if (!sprite) return
