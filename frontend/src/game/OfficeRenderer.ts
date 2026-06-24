@@ -236,6 +236,35 @@ export class OfficeRenderer {
         }
       }
     })
+
+    this.layout.zones.forEach((zone: Zone) => {
+      if (zone.style !== 'room' || !zone.bounds) return
+      const border = this.layout.walls?.thickness ?? 1
+      const doors = Array.isArray(zone.doors) ? zone.doors : []
+      const { x, y, width, height } = zone.bounds
+      const doorTiles = new Set<string>()
+      doors.forEach((d: Door) => {
+        if (d.side === 'top' || d.side === 'bottom') {
+          for (let i = 0; i < d.size; i++) doorTiles.add(`${x + d.start + i},${d.side === 'top' ? y - border : y + height}`)
+        } else {
+          for (let i = 0; i < d.size; i++) doorTiles.add(`${d.side === 'left' ? x - border : x + width},${y + d.start + i}`)
+        }
+      })
+      for (let bw = 0; bw < border; bw++) {
+        for (let i = 0; i < width; i++) {
+          const topKey = `${x + i},${y - 1 - bw}`
+          const botKey = `${x + i},${y + height + bw}`
+          if (!doorTiles.has(topKey)) this.blockedTiles.add(topKey)
+          if (!doorTiles.has(botKey)) this.blockedTiles.add(botKey)
+        }
+        for (let i = 0; i < height; i++) {
+          const leftKey = `${x - 1 - bw},${y + i}`
+          const rightKey = `${x + width + bw},${y + i}`
+          if (!doorTiles.has(leftKey)) this.blockedTiles.add(leftKey)
+          if (!doorTiles.has(rightKey)) this.blockedTiles.add(rightKey)
+        }
+      }
+    })
   }
 
   findPath(startCol: number, startRow: number, endCol: number, endRow: number): TilePos[] {
@@ -1559,14 +1588,20 @@ export class OfficeRenderer {
       state.zoneId = zone?.id
 
       if (zoneChanged) {
-        state.interRoomTimer = 15
-        state.interRoomFromX = state.x
-        state.interRoomFromY = state.y
-        state.interRoomToX = targetX
-        state.interRoomToY = targetY
-        state.path = []
-        state.currentTarget = null
+        const startCol = Math.round((state.x - this.offsetX) / this.tileSize)
+        const startRow = Math.round((state.y - this.offsetY) / this.tileSize)
+        state.path = this.findPath(startCol, startRow, targetTile.col, targetTile.row)
         state.finalTarget = targetTile as InteractionTarget
+        state.currentTarget = (state.path.shift() ?? null) as InteractionTarget | null
+        if (state.path.length === 0 && (startCol !== targetTile.col || startRow !== targetTile.row)) {
+          state.x = targetX
+          state.y = targetY
+          state.path = []
+          state.currentTarget = null
+        }
+        if (typeof (targetTile as any).facingRight === 'boolean') {
+          state.facingRight = (targetTile as any).facingRight
+        }
         return state
       }
 
@@ -1578,15 +1613,6 @@ export class OfficeRenderer {
       if (typeof (targetTile as any).facingRight === 'boolean') {
         state.facingRight = (targetTile as any).facingRight
       }
-    }
-
-    if (state.interRoomTimer && state.interRoomTimer > 0) {
-      const t = 1 - state.interRoomTimer / 15
-      state.interRoomTimer -= 1
-      state.x = state.interRoomFromX! + (state.interRoomToX! - state.interRoomFromX!) * t
-      state.y = state.interRoomFromY! + (state.interRoomToY! - state.interRoomFromY!) * t
-      state.isMoving = true
-      return state
     }
 
     state.isMoving = false
