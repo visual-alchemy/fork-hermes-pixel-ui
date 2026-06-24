@@ -901,10 +901,8 @@ async def handle_hermes_event(event: HermesEvent):
         task = "Error"
         is_replay = False
 
-    # Si el agente no existe, solo crearlo si es hermes_current o ya existía
+    # Si el agente no existe, crearlo
     if agent_id not in state.agents:
-        if agent_id != "hermes_current":
-            return
         agent_name = event.data.get("name", f"Hermes-{agent_id[:6]}")
         state.add_agent(agent_id, agent_name)
     
