@@ -2167,19 +2167,19 @@ export class OfficeRenderer {
     const displayName = name.length > 10 ? name.slice(0, 10) : name
     if (!displayName) return
 
-    const fontSize = Math.max(7, Math.round(spriteScale * 3.8))
+    const fontSize = Math.max(11, Math.round(spriteScale * 6))
     ctx.save()
     ctx.font = `${fontSize}px 'FS Pixel Sans', monospace`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'bottom'
 
     const textWidth = ctx.measureText(displayName).width
-    const paddingX = Math.max(3, spriteScale * 1.5)
-    const paddingY = Math.max(2, spriteScale * 0.8)
+    const paddingX = Math.max(5, spriteScale * 2.5)
+    const paddingY = Math.max(3, spriteScale * 1.5)
     const pillWidth = textWidth + paddingX * 2
     const pillHeight = fontSize + paddingY * 2
     const pillX = drawX + drawWidth / 2 - pillWidth / 2
-    const pillY = drawY - pillHeight - Math.max(2, spriteScale * 1.2)
+    const pillY = drawY - pillHeight - Math.max(3, spriteScale * 2)
 
     // Dark pill background
     ctx.fillStyle = 'rgba(8, 10, 18, 0.78)'
