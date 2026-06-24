@@ -81,7 +81,7 @@ export class OfficeRenderer {
     const preferredScale = DEFAULT_SCALE * SCALE_BOOST
     const availableScaleX = (cssWidth - 72) / (this.layout.dimensions.width * 8)
     const availableScaleY = (cssHeight - 72) / (this.layout.dimensions.height * 8)
-    this.scale = Math.max(4.2, Math.min(preferredScale, availableScaleX, availableScaleY))
+    this.scale = Math.max(2.5, Math.min(preferredScale, availableScaleX, availableScaleY))
     this.tileSize = (BASE_TILE_SIZE * this.scale) / 2
 
     const officeWidth = this.layout.dimensions.width * this.tileSize
