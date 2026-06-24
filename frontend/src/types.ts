@@ -185,6 +185,11 @@ export interface AgentState {
   roamStep?: number
   roamMode?: string
   nextRoamAt?: number
+  interRoomTimer?: number
+  interRoomFromX?: number
+  interRoomFromY?: number
+  interRoomToX?: number
+  interRoomToY?: number
   breakFocus?: InteractionTarget | null
   deskFocus?: InteractionTarget | null
   meetingFocus?: InteractionTarget | null

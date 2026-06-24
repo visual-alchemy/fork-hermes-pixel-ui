@@ -1559,21 +1559,34 @@ export class OfficeRenderer {
       state.zoneId = zone?.id
 
       if (zoneChanged) {
-        state.x = targetX
-        state.y = targetY
+        state.interRoomTimer = 15
+        state.interRoomFromX = state.x
+        state.interRoomFromY = state.y
+        state.interRoomToX = targetX
+        state.interRoomToY = targetY
         state.path = []
         state.currentTarget = null
         state.finalTarget = targetTile as InteractionTarget
-      } else {
-        const startCol = Math.round((state.x - this.offsetX) / this.tileSize)
-        const startRow = Math.round((state.y - this.offsetY) / this.tileSize)
-        state.path = this.findPath(startCol, startRow, targetTile.col, targetTile.row)
-        state.finalTarget = targetTile as InteractionTarget
-        state.currentTarget = (state.path.shift() ?? null) as InteractionTarget | null
-        if (typeof (targetTile as any).facingRight === 'boolean') {
-          state.facingRight = (targetTile as any).facingRight
-        }
+        return state
       }
+
+      const startCol = Math.round((state.x - this.offsetX) / this.tileSize)
+      const startRow = Math.round((state.y - this.offsetY) / this.tileSize)
+      state.path = this.findPath(startCol, startRow, targetTile.col, targetTile.row)
+      state.finalTarget = targetTile as InteractionTarget
+      state.currentTarget = (state.path.shift() ?? null) as InteractionTarget | null
+      if (typeof (targetTile as any).facingRight === 'boolean') {
+        state.facingRight = (targetTile as any).facingRight
+      }
+    }
+
+    if (state.interRoomTimer && state.interRoomTimer > 0) {
+      const t = 1 - state.interRoomTimer / 15
+      state.interRoomTimer -= 1
+      state.x = state.interRoomFromX! + (state.interRoomToX! - state.interRoomFromX!) * t
+      state.y = state.interRoomFromY! + (state.interRoomToY! - state.interRoomFromY!) * t
+      state.isMoving = true
+      return state
     }
 
     state.isMoving = false
