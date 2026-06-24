@@ -946,6 +946,12 @@ async def lifespan(app: FastAPI):
 
     # Init SQLite agent store (DB for crash recovery, fresh start each session)
     await state.store.init()
+
+    # Auto-spawn Alfred so he's always visible in the office on startup
+    if "hermes_current" not in state.agents:
+        state.add_agent("hermes_current", "Alfred")
+        state.update_agent("hermes_current", status="working", task="On duty", location="desk", activity="computer")
+        logger.info("🦇 Alfred auto-spawned in the office")
     
     yield
     
