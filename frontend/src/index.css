@@ -274,11 +274,19 @@ select {
   padding: 16px;
 }
 
-.zone-panel,
+.zone-panel {
+  top: 18px;
+  left: 18px;
+  width: 360px;
+}
+
 .editor-sidebar {
   top: 18px;
   left: 18px;
   width: 360px;
+  max-height: calc(100% - 36px);
+  display: flex;
+  flex-direction: column;
 }
 
 .staff-panel {
@@ -494,6 +502,9 @@ select {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+  overflow-y: auto;
+  flex: 1;
+  padding-right: 4px;
 }
 
 .furniture-button {

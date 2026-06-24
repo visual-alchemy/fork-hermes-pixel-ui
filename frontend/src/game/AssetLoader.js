@@ -99,16 +99,7 @@ export class AssetLoader {
   }
 
   getCustomCharacter(name, index, hueShift = 0) {
-    const nameLower = (name || '').toLowerCase();
-    const cacheKey = `${index}:${hueShift}:${nameLower}`;
-    if (this.tintCache[cacheKey]) return this.tintCache[cacheKey];
-
-    const baseImg = this.characters[index % this.characters.length];
-    if (!baseImg) return null;
-
-    if (!nameLower.includes('batman') && !nameLower.includes('alfred') && !nameLower.includes('bruce') && !nameLower.includes('robin') && !nameLower.includes('batgirl')) {
-      return this.getTintedCharacter(index, hueShift);
-    }
+    return this.getTintedCharacter(index, hueShift);
 
     const canvas = document.createElement('canvas');
     canvas.width = baseImg.width;
