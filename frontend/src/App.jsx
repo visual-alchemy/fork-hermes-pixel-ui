@@ -518,7 +518,6 @@ function App() {
           onMouseDown={handleMouseDown}
           onContextMenu={(event) => event.preventDefault()}
         >
-          <div className="scanlines-overlay" />
 
           {loading ? (
             <div className="loading-panel pixel-panel">

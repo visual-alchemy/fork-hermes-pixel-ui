@@ -608,18 +608,7 @@ select {
    OPTION A: BATCOMPUTER HUD ADDITIONS
    ========================================================================== */
 
-/* Scanlines overlay for futuristic terminal effect */
-.scanlines-overlay {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(
-    rgba(0, 180, 216, 0.06) 50%, 
-    rgba(0, 0, 0, 0.35) 50%
-  );
-  background-size: 100% 4px;
-  z-index: 5;
-}
+
 
 /* System Log terminal console at the bottom */
 .terminal-console {
