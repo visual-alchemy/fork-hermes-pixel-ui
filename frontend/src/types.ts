@@ -185,6 +185,20 @@ export interface AgentState {
   roamStep?: number
   roamMode?: string
   nextRoamAt?: number
+  breakFocus?: InteractionTarget | null
+  deskFocus?: InteractionTarget | null
+  meetingFocus?: InteractionTarget | null
+  restFocus?: InteractionTarget | null
+  meetingRole?: string
+  movementIndex?: number
+  targetPose?: string
+  typingPulse?: number
+  heightScale?: number
+  status?: string
+  activityStatus?: string
+  scaleMultiplier?: number
+  rotation?: number
+  state?: string
 }
 
 export type GlobResult<T = string> = Record<string, () => Promise<{ default: T }>>

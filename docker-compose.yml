@@ -10,6 +10,7 @@ services:
     volumes:
       - ${HOME}/.hermes/sessions:/root/.hermes/sessions:ro
       - ./backend/presets:/app/backend/presets
+      - ./data:/data
     environment:
       - HERMES_SESSIONS_DIR=/root/.hermes/sessions
       - PIXEL_UI_DISABLE_CAFFEINATE=1

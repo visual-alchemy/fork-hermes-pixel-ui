@@ -19,6 +19,11 @@ interface RenderableEntry {
   draw: (ctx: CanvasRenderingContext2D) => void
 }
 
+interface AgentVisual {
+  characterIndex: number
+  hueShift: number
+}
+
 interface FurnitureSprite {
   file: string
   footprintW: number
@@ -45,15 +50,30 @@ interface WorkFocusEntry {
   until: number
 }
 
+interface AgentPoseInput {
+  activity: string | null
+  status: string
+  deskFocus: boolean
+  breakFocus: boolean
+  restFocus: boolean
+  meetingFocus: boolean
+  meetingRole: string | null
+  targetPose: string | null
+  typingPulse?: number
+  isMoving?: boolean
+  facingRight?: boolean
+  index?: number
+}
+
 interface MovementGroup {
   key: string
   agents: Agent[]
 }
 
 interface SurfaceConfig {
-  floorIndex: number
-  tint?: string
-  surface: string
+  floorIndex?: number
+  tint?: string | null
+  surface?: string
 }
 
 interface InteractionTargetExt extends InteractionTarget {
@@ -334,7 +354,7 @@ export class OfficeRenderer {
       if (isWorkFocus) {
         this.agentWorkFocus.set(agent.id, {
           location: agent.location,
-          activity: agent.activity,
+          activity: agent.activity || '',
           task: agent.task,
           replay: Boolean(agent.replay),
           replay_tool: agent.replay_tool,
@@ -372,7 +392,7 @@ export class OfficeRenderer {
     this.ctx.fillRect(0, 0, this.viewportWidth, this.viewportHeight)
   }
 
-  drawOfficeBase() {
+  drawOfficeBase(): void {
     const theme = this.getTheme()
     const { officeBounds, wallColor, trimColor, shadowColor, walkwayFloorIndex, walkwaySurface } = theme
 
@@ -400,7 +420,7 @@ export class OfficeRenderer {
     })
   }
 
-  drawZones() {
+  drawZones(): void {
     this.layout.zones.forEach((zone) => {
       if (zone.render === false) return
       if (zone.style === 'room') {
@@ -411,7 +431,7 @@ export class OfficeRenderer {
     })
   }
 
-  drawRoom(zone) {
+  drawRoom(zone: Zone): void {
     const theme = this.getTheme()
     const border = this.layout.walls?.thickness ?? 1
     const outerX = zone.bounds.x - border
@@ -428,7 +448,7 @@ export class OfficeRenderer {
     })
   }
 
-  drawOpenZone(zone) {
+  drawOpenZone(zone: Zone): void {
     const theme = this.getTheme()
     this.drawSurfaceArea(zone.bounds.x, zone.bounds.y, zone.bounds.width, zone.bounds.height, {
       floorIndex: zone.floorIndex ?? theme.walkwayFloorIndex,
@@ -441,7 +461,7 @@ export class OfficeRenderer {
     }
   }
 
-  drawZoneLabels() {
+  drawZoneLabels(): void {
     this.layout.zones.forEach((zone) => {
       if (zone.render === false) return
       if (!this.editMode && !zone.showLabel) return
@@ -708,7 +728,7 @@ export class OfficeRenderer {
     this.ctx.restore()
   }
 
-  drawTiledFloor(col, row, width, height, floorIndex = 0) {
+  drawTiledFloor(col: number, row: number, width: number, height: number, floorIndex: number = 0): void {
     const floor = this.assetLoader.getFloor(floorIndex)
     if (!floor) return
 
@@ -720,8 +740,8 @@ export class OfficeRenderer {
     }
   }
 
-  getSurfacePalette(surface) {
-    const palettes = {
+  getSurfacePalette(surface: string): any {
+    const palettes: Record<string, any> = {
       hall: {
         base: '#b3b7bd',
         alt: '#a3a8af',
@@ -763,7 +783,7 @@ export class OfficeRenderer {
     return palettes[surface] || null
   }
 
-  drawZoneLabel(zone) {
+  drawZoneLabel(zone: Zone): void {
     const theme = this.getTheme()
     const anchorCol = zone.labelAnchor?.col ?? zone.bounds.x
     const anchorRow = zone.labelAnchor?.row ?? zone.bounds.y
@@ -808,7 +828,7 @@ export class OfficeRenderer {
     this.ctx.restore()
   }
 
-  drawGrid() {
+  drawGrid(): void {
     const theme = this.getTheme()
     const { x, y, width, height } = theme.officeBounds
 
@@ -842,8 +862,8 @@ export class OfficeRenderer {
     }
   }
 
-  addGhostToRenderables(renderables) {
-    if (!this.hoverTile) return
+  addGhostToRenderables(renderables: RenderableEntry[]): void {
+    if (!this.hoverTile || !this.selectedFurnitureType) return
     const asset = this.assetLoader.getFurniture(this.selectedFurnitureType.toUpperCase())
     const sprite = this.resolveFurnitureSprite(asset, { rotation: 0 })
     if (!sprite) return
@@ -870,7 +890,7 @@ export class OfficeRenderer {
     })
   }
 
-  canPlaceFurnitureAt(type, col, row) {
+  canPlaceFurnitureAt(type: string, col: number, row: number): boolean {
     const asset = this.assetLoader.getFurniture(String(type || '').toUpperCase())
     const sprite = this.resolveFurnitureSprite(asset, { rotation: 0 })
     if (!sprite) return false
@@ -891,7 +911,7 @@ export class OfficeRenderer {
       })
 
       if (surfacePropAtOrigin) return false
-      return Boolean(this.findSupportingSurfaceItem({ type, x: col, y: row, rotation: 0 }))
+      return Boolean(this.findSupportingSurfaceItem({ id: '', type, x: col, y: row, rotation: 0 }))
     }
 
     if (sprite.canPlaceOnWalls) {
@@ -912,7 +932,7 @@ export class OfficeRenderer {
     return !this.isFootprintBlocked(col, row, sprite.footprintW, sprite.footprintH)
   }
 
-  isFootprintWithinBounds(startCol, startRow, footprintW, footprintH) {
+  isFootprintWithinBounds(startCol: number, startRow: number, footprintW: number, footprintH: number): boolean {
     return (
       startCol >= 0 &&
       startRow >= 0 &&
@@ -921,7 +941,7 @@ export class OfficeRenderer {
     )
   }
 
-  getFurnitureAtTile(col, row) {
+  getFurnitureAtTile(col: number, row: number): FurnitureItem | null {
     for (let index = this.layout.furniture.length - 1; index >= 0; index -= 1) {
       const item = this.layout.furniture[index]
       const asset = this.assetLoader.getFurniture((item.type || '').toUpperCase())
@@ -941,7 +961,7 @@ export class OfficeRenderer {
     return null
   }
 
-  isFootprintBlocked(startCol, startRow, footprintW, footprintH) {
+  isFootprintBlocked(startCol: number, startRow: number, footprintW: number, footprintH: number): boolean {
     for (let col = 0; col < footprintW; col += 1) {
       for (let row = 0; row < footprintH; row += 1) {
         const tileCol = startCol + col
@@ -965,10 +985,10 @@ export class OfficeRenderer {
     return false
   }
 
-  collectRenderables(agents) {
-    const renderables = []
-    const zoneIndexes = new Map()
-    const movementGroups = new Map()
+  collectRenderables(agents: Agent[]): RenderableEntry[] {
+    const renderables: RenderableEntry[] = []
+    const zoneIndexes: Map<string, number> = new Map()
+    const movementGroups: Map<string, Agent[]> = new Map()
 
     agents.forEach((agent) => {
       const zone = this.getAgentZone(agent)
@@ -983,7 +1003,7 @@ export class OfficeRenderer {
       group.sort((left, right) => String(left.id).localeCompare(String(right.id)))
     })
 
-    const movementIndexes = new Map()
+    const movementIndexes: Map<string, number> = new Map()
     movementGroups.forEach((group, key) => {
       group.forEach((agent, index) => {
         movementIndexes.set(`${key}:${agent.id}`, index)
@@ -1076,8 +1096,8 @@ export class OfficeRenderer {
     return renderables
   }
 
-  getAgentVisualAssignments(agents) {
-    const assignments = new Map()
+  getAgentVisualAssignments(agents: Agent[]): Map<string, AgentVisual> {
+    const assignments: Map<string, AgentVisual> = new Map()
     const characterCount = Math.max(1, this.assetLoader.characters.length || 1)
     const usedCharacters = new Set()
 
@@ -1108,7 +1128,7 @@ export class OfficeRenderer {
     return assignments
   }
 
-  getMovementGroupKey(agent, zone = this.getAgentZone(agent), activity = this.getAgentActivity(agent)) {
+  getMovementGroupKey(agent: Agent, zone: Zone | null = this.getAgentZone(agent), activity: string | null = this.getAgentActivity(agent)): string {
     if (!zone) return '__default__'
 
     if ((zone.id === 'desk' || zone.id === 'lab') && activity === 'computer') {
@@ -1118,13 +1138,14 @@ export class OfficeRenderer {
     return zone.id
   }
 
-  getOccupiedDeskComputerIds(agents, movementIndexes) {
-    const occupied = new Set()
+  getOccupiedDeskComputerIds(agents: Agent[], movementIndexes: Map<string, number>): Set<string> {
+    const occupied = new Set<string>()
 
     agents.forEach((agent) => {
       const zone = this.getAgentZone(agent)
       const activity = this.getAgentActivity(agent)
       if (!this.isDeskComputerOccupant(agent, zone, activity)) return
+      if (!zone) return
 
       const movementGroupKey = this.getMovementGroupKey(agent, zone, activity)
       const movementIndex = movementIndexes.get(`${movementGroupKey}:${agent.id}`) ?? 0
@@ -1140,27 +1161,27 @@ export class OfficeRenderer {
     return occupied
   }
 
-  isDeskComputerOccupant(agent, zone = this.getAgentZone(agent), activity = this.getAgentActivity(agent)) {
-    return Boolean(zone) && (zone.id === 'desk' || zone.id === 'lab') && activity === 'computer'
+  isDeskComputerOccupant(agent: Agent, zone: Zone | null = this.getAgentZone(agent), activity: string | null = this.getAgentActivity(agent)): boolean {
+    return zone !== null && (zone.id === 'desk' || zone.id === 'lab') && activity === 'computer'
   }
 
-  hasActiveMeeting(agents) {
+  hasActiveMeeting(agents: Agent[]): boolean {
     return agents.some((agent) => {
       const zone = this.getAgentZone(agent)
       return zone?.id === 'meeting' && this.getAgentActivity(agent) === 'meeting'
     })
   }
 
-  isDeskComputerWorker(agent, zone = this.getAgentZone(agent), activity = this.getAgentActivity(agent)) {
-    return Boolean(zone) && (zone.id === 'desk' || zone.id === 'lab') && activity === 'computer' && agent.status === 'working'
+  isDeskComputerWorker(agent: Agent, zone: Zone | null = this.getAgentZone(agent), activity: string | null = this.getAgentActivity(agent)): boolean {
+    return zone !== null && (zone.id === 'desk' || zone.id === 'lab') && activity === 'computer' && agent.status === 'working'
   }
 
   isDeskComputerFocused(
-    agent,
-    state,
-    zone = this.getAgentZone(agent),
-    activity = this.getAgentActivity(agent),
-  ) {
+    agent: Agent,
+    state: AgentState,
+    zone: Zone | null = this.getAgentZone(agent),
+    activity: string | null = this.getAgentActivity(agent),
+  ): boolean {
     if (!this.isDeskComputerOccupant(agent, zone, activity)) return false
     if (!state) return false
 
@@ -1168,11 +1189,11 @@ export class OfficeRenderer {
   }
 
   isBreakSeatFocused(
-    agent,
-    state,
-    zone = this.getAgentZone(agent),
-    activity = this.getAgentActivity(agent),
-  ) {
+    agent: Agent,
+    state: AgentState,
+    zone: Zone | null = this.getAgentZone(agent),
+    activity: string | null = this.getAgentActivity(agent),
+  ): boolean {
     if (!zone || zone.id !== 'cafe' || activity !== 'break') return false
     if (!state) return false
     if (state.finalTarget?.pose !== 'seated') return false
@@ -1181,11 +1202,11 @@ export class OfficeRenderer {
   }
 
   isRestSeatFocused(
-    agent,
-    state,
-    zone = this.getAgentZone(agent),
-    activity = this.getAgentActivity(agent),
-  ) {
+    agent: Agent,
+    state: AgentState,
+    zone: Zone | null = this.getAgentZone(agent),
+    activity: string | null = this.getAgentActivity(agent),
+  ): boolean {
     if (!zone || zone.id !== 'lounge' || activity !== 'rest') return false
     if (!state) return false
     if (state.finalTarget?.pose !== 'resting') return false
@@ -1194,23 +1215,23 @@ export class OfficeRenderer {
   }
 
   isMeetingFocused(
-    agent,
-    state,
-    zone = this.getAgentZone(agent),
-    activity = this.getAgentActivity(agent),
-  ) {
+    agent: Agent,
+    state: AgentState,
+    zone: Zone | null = this.getAgentZone(agent),
+    activity: string | null = this.getAgentActivity(agent),
+  ): boolean {
     if (!zone || zone.id !== 'meeting' || activity !== 'meeting') return false
     if (!state) return false
 
     return !state.isMoving && !state.currentTarget && state.path.length === 0
   }
 
-  getMeetingRole(index = 0) {
+  getMeetingRole(index: number = 0): string {
     const phase = Math.floor(Date.now() / 1800)
     return (index + phase) % 2 === 0 ? 'talking' : 'listening'
   }
 
-  findNearestFurnitureItem(targetTile, type, maxDistance = Infinity) {
+  findNearestFurnitureItem(targetTile: TilePos, type: string, maxDistance: number = Infinity): FurnitureItem | null {
     let bestMatch = null
     let bestDistance = Infinity
 
@@ -1230,11 +1251,11 @@ export class OfficeRenderer {
     return bestMatch
   }
 
-  getFurniturePlacement(item, sprite) {
-    const startX = item.x !== undefined ? item.x : item.col
-    const startY = item.y !== undefined ? item.y : item.row
+  getFurniturePlacement(item: FurnitureItem, sprite: any): any {
+    const startX: number = item.x !== undefined ? item.x : (item.col ?? 0)
+    const startY: number = item.y !== undefined ? item.y : (item.row ?? 0)
     const { x, y } = this.tileToScreen(startX, startY)
-    const renderOffsetX = (item.renderOffsetX || 0) * this.tileSize
+    const renderOffsetX = ((item as any).renderOffsetX || 0) * this.tileSize
     const renderOffsetY = (item.renderOffsetY || 0) * this.tileSize
 
     const basePlacement = {
@@ -1270,7 +1291,7 @@ export class OfficeRenderer {
     }
   }
 
-  getSurfaceInsetX(support, localCol, drawWidth) {
+  getSurfaceInsetX(support: any, localCol: number, drawWidth: number): number {
     const type = String(support.item.type || '').toLowerCase()
     const baseInset = (this.tileSize - drawWidth) / 2
 
@@ -1281,7 +1302,7 @@ export class OfficeRenderer {
     return baseInset
   }
 
-  getSurfaceInsetY(support, localRow) {
+  getSurfaceInsetY(support: any, localRow: number): number {
     const type = String(support.item.type || '').toLowerCase()
     const rotation = clampRotation(support.item.rotation || 0)
 
@@ -1300,9 +1321,9 @@ export class OfficeRenderer {
     return this.tileSize * (localRow + 0.18)
   }
 
-  findSupportingSurfaceItem(item) {
-    const itemX = item.x !== undefined ? item.x : item.col
-    const itemY = item.y !== undefined ? item.y : item.row
+  findSupportingSurfaceItem(item: FurnitureItem): any {
+    const itemX: number = item.x !== undefined ? item.x : (item.col ?? 0)
+    const itemY: number = item.y !== undefined ? item.y : (item.row ?? 0)
 
     for (const candidate of this.layout.furniture) {
       if (candidate === item) continue
@@ -1311,8 +1332,8 @@ export class OfficeRenderer {
       const sprite = this.resolveFurnitureSprite(asset, candidate)
       if (!sprite || sprite.canPlaceOnSurfaces || sprite.canPlaceOnWalls) continue
 
-      const startX = candidate.x !== undefined ? candidate.x : candidate.col
-      const startY = candidate.y !== undefined ? candidate.y : candidate.row
+      const startX: number = candidate.x !== undefined ? candidate.x : (candidate.col ?? 0)
+      const startY: number = candidate.y !== undefined ? candidate.y : (candidate.row ?? 0)
       const endX = startX + sprite.footprintW - 1
       const endY = startY + sprite.footprintH - 1
 
@@ -1329,7 +1350,7 @@ export class OfficeRenderer {
     return null
   }
 
-  resolveFurnitureSprite(asset, item = {}) {
+  resolveFurnitureSprite(asset: any, item: any = {}): any {
     if (!asset?.manifest) return null
 
     const resolved = this.resolveManifestNode(asset.manifest, asset.images, {
@@ -1348,7 +1369,7 @@ export class OfficeRenderer {
     }
   }
 
-  resolveManifestNode(node, images, options) {
+  resolveManifestNode(node: any, images: any, options: any): any {
     if (!node) return null
 
     if (node.type === 'asset') {
@@ -1364,8 +1385,8 @@ export class OfficeRenderer {
       if (node.groupType === 'rotation') {
         const { orientation, mirrored } = this.resolveRotationNode(node, options.rotation)
         const next =
-          node.members?.find((member) => member.orientation === orientation) ||
-          node.members?.find((member) => member.orientation === 'front') ||
+          node.members?.find((member: any) => member.orientation === orientation) ||
+          node.members?.find((member: any) => member.orientation === 'front') ||
           node.members?.[0]
 
         return this.resolveManifestNode(next, images, {
@@ -1376,8 +1397,8 @@ export class OfficeRenderer {
 
       if (node.groupType === 'state') {
         const next =
-          node.members?.find((member) => member.state === options.state) ||
-          node.members?.find((member) => member.state === 'off') ||
+          node.members?.find((member: any) => member.state === options.state) ||
+          node.members?.find((member: any) => member.state === 'off') ||
           node.members?.[0]
 
         return this.resolveManifestNode(next, images, options)
@@ -1400,7 +1421,7 @@ export class OfficeRenderer {
     return null
   }
 
-  resolveRotationNode(node, rotation) {
+  resolveRotationNode(node: any, rotation: number): any {
     if (node.rotationScheme === '2-way') {
       if (rotation === 1) return { orientation: 'side', mirrored: false }
       if (rotation === 3) return { orientation: 'side', mirrored: true }
@@ -1417,7 +1438,7 @@ export class OfficeRenderer {
     return { orientation: 'front', mirrored: false }
   }
 
-  drawFurnitureSprite(ctx, sprite, x, y, options = {}) {
+  drawFurnitureSprite(ctx: CanvasRenderingContext2D, sprite: any, x: number, y: number, options: any = {}): void {
     const scaleMultiplier = options.scaleMultiplier || 1
     const drawWidth = sprite.width * (this.scale / 2) * scaleMultiplier
     const drawHeight = sprite.height * (this.scale / 2) * scaleMultiplier
@@ -1445,7 +1466,7 @@ export class OfficeRenderer {
     ctx.drawImage(sprite.img, x, y, drawWidth, drawHeight)
   }
 
-  drawComputerGlow(ctx, placement, sprite) {
+  drawComputerGlow(ctx: CanvasRenderingContext2D, placement: any, sprite: any): void {
     const scaleMultiplier = placement.scaleMultiplier || 1
     const drawWidth = sprite.width * (this.scale / 2) * scaleMultiplier
     const drawHeight = sprite.height * (this.scale / 2) * scaleMultiplier
@@ -1465,7 +1486,7 @@ export class OfficeRenderer {
     ctx.restore()
   }
 
-  drawCoffeeSteam(ctx, placement, sprite) {
+  drawCoffeeSteam(ctx: CanvasRenderingContext2D, placement: any, sprite: any): void {
     const scaleMultiplier = placement.scaleMultiplier || 1
     const drawWidth = sprite.width * (this.scale / 2) * scaleMultiplier
     const drawHeight = sprite.height * (this.scale / 2) * scaleMultiplier
@@ -1486,7 +1507,7 @@ export class OfficeRenderer {
     ctx.restore()
   }
 
-  hashCode(str) {
+  hashCode(str: string): number {
     let hash = 0
     for (let index = 0; index < str.length; index += 1) {
       hash = (hash << 5) - hash + str.charCodeAt(index)
@@ -1495,7 +1516,7 @@ export class OfficeRenderer {
     return hash
   }
 
-  updateAgentMovement(agent, index) {
+  updateAgentMovement(agent: Agent, index: number): AgentState {
     const zone = this.getAgentZone(agent)
     const activity = this.getAgentActivity(agent)
     const candidates = zone ? this.getZoneTargetCandidates(zone, activity) : []
@@ -1512,9 +1533,14 @@ export class OfficeRenderer {
         currentTarget: null,
         facingRight: true,
         finalTarget: null,
-        zoneId: zone?.id || null,
+        pose: 'idle',
+        walkTimer: 0,
+        idleTimer: 0,
+        activityTimer: 0,
+        animationFrame: 0,
+        zoneId: zone?.id,
         slotIndex: index,
-        activity: activity || null,
+        activity: activity || undefined,
         roamStep: 0,
         roamMode: 'anchor',
         nextRoamAt: this.getNextRoamTime(agent),
@@ -1522,7 +1548,7 @@ export class OfficeRenderer {
     }
 
     const state = this.agentStates[agent.id]
-    state.activity = activity || null
+    state.activity = activity || undefined
 
     if (
       !state.finalTarget ||
@@ -1532,10 +1558,10 @@ export class OfficeRenderer {
       const startCol = Math.round((state.x - this.offsetX) / this.tileSize)
       const startRow = Math.round((state.y - this.offsetY) / this.tileSize)
       state.path = this.findPath(startCol, startRow, targetTile.col, targetTile.row)
-      state.finalTarget = targetTile
-      state.currentTarget = state.path.shift()
-      if (typeof targetTile.facingRight === 'boolean') {
-        state.facingRight = targetTile.facingRight
+      state.finalTarget = targetTile as InteractionTarget
+      state.currentTarget = (state.path.shift() ?? null) as InteractionTarget | null
+      if (typeof (targetTile as any).facingRight === 'boolean') {
+        state.facingRight = (targetTile as any).facingRight
       }
     }
 
@@ -1560,7 +1586,7 @@ export class OfficeRenderer {
         if (typeof state.currentTarget?.facingRight === 'boolean') {
           state.facingRight = state.currentTarget.facingRight
         }
-        state.currentTarget = state.path.shift()
+        state.currentTarget = (state.path.shift() ?? null) as InteractionTarget | null
       }
     }
 
@@ -1576,17 +1602,17 @@ export class OfficeRenderer {
     return state
   }
 
-  getDesiredAgentTarget(agent, index, zone, candidates, anchorTile) {
+  getDesiredAgentTarget(agent: Agent, index: number, zone: Zone | null, candidates: any[], anchorTile: TilePos): TilePos {
     const state = this.agentStates[agent.id]
     if (!state) return anchorTile
 
     const activity = this.getAgentActivity(agent)
     const zoneChanged =
-      state.zoneId !== (zone?.id || null) || state.slotIndex !== index || state.activity !== activity
+      state.zoneId !== (zone?.id) || state.slotIndex !== index || state.activity !== activity
     if (zoneChanged) {
-      state.zoneId = zone?.id || null
+      state.zoneId = zone?.id
       state.slotIndex = index
-      state.activity = activity || null
+      state.activity = activity || undefined
       state.roamStep = 0
       state.roamMode = 'anchor'
       state.nextRoamAt = this.getNextRoamTime(agent)
@@ -1613,7 +1639,7 @@ export class OfficeRenderer {
       return anchorTile
     }
 
-    const roamCandidates = this.getZoneRoamCandidates(zone, anchorTile)
+    const roamCandidates = zone ? this.getZoneRoamCandidates(zone, anchorTile) : []
     const roamTile = this.getNextRoamTarget(agent, state, roamCandidates, anchorTile)
     state.nextRoamAt = now + this.getRoamDelay(agent)
 
@@ -1623,11 +1649,11 @@ export class OfficeRenderer {
     }
 
     state.roamMode = 'ambient'
-    state.roamStep += 1
+    state.roamStep = (state.roamStep || 0) + 1
     return roamTile
   }
 
-  canAgentRoam(agent, zone = null) {
+  canAgentRoam(agent: Agent, zone: Zone | null = null): boolean {
     if (!zone || agent.status === 'error') return false
 
     const activity = this.getAgentActivity(agent)
@@ -1638,12 +1664,12 @@ export class OfficeRenderer {
     return true
   }
 
-  shouldAnchorAgent(agent, zone = null, activity = this.getAgentActivity(agent)) {
+  shouldAnchorAgent(agent: Agent, zone: Zone | null = null, activity: string | null = this.getAgentActivity(agent)): boolean {
     if (agent.replay && agent.status === 'working' && zone?.id && zone.id !== 'cafe') {
       return true
     }
 
-    return Boolean(zone) && (
+    return zone !== null && (
       (zone.id === 'desk' && activity === 'computer') ||
       (zone.id === 'lab' && activity === 'computer') ||
       (zone.id === 'library' && activity === 'research') ||
@@ -1653,7 +1679,7 @@ export class OfficeRenderer {
     )
   }
 
-  getRoamDelay(agent) {
+  getRoamDelay(agent: Agent): number {
     const hash = Math.abs(this.hashCode(`${agent.id}:${agent.status || 'idle'}`))
     let minDelay = ROAM_DELAY_MIN
     let maxDelay = ROAM_DELAY_MAX
@@ -1672,11 +1698,11 @@ export class OfficeRenderer {
     return minDelay + (hash % (maxDelay - minDelay + 1))
   }
 
-  getNextRoamTime(agent) {
+  getNextRoamTime(agent: Agent): number {
     return Date.now() + this.getRoamDelay(agent)
   }
 
-  getNextRoamTarget(agent, state, candidates, anchorTile) {
+  getNextRoamTarget(agent: Agent, state: AgentState, candidates: TilePos[], anchorTile: TilePos): TilePos {
     if (!candidates.length) return anchorTile
 
     const seed = Math.abs(this.hashCode(String(agent.id)))
@@ -1686,7 +1712,7 @@ export class OfficeRenderer {
     const finalKey = state.finalTarget ? `${state.finalTarget.col},${state.finalTarget.row}` : null
 
     for (let offset = 1; offset <= candidates.length; offset += 1) {
-      const candidate = candidates[(seed + state.roamStep * 3 + offset * 2) % candidates.length]
+      const candidate = candidates[(seed + (state.roamStep || 0) * 3 + offset * 2) % candidates.length]
       const key = `${candidate.col},${candidate.row}`
       if (key === currentKey || key === finalKey) continue
       return candidate
@@ -1695,15 +1721,15 @@ export class OfficeRenderer {
     return anchorTile
   }
 
-  getAgentZone(agent) {
+  getAgentZone(agent: Agent): Zone | null {
     return this.layout.zones.find((item) => item.id === agent.location) || this.layout.zones[0]
   }
 
-  getAgentActivity(agent) {
+  getAgentActivity(agent: Agent): string | null {
     return agent.activity || null
   }
 
-  isWalkableTile(col, row) {
+  isWalkableTile(col: number, row: number): boolean {
     if (
       col < 0 ||
       row < 0 ||
@@ -1716,9 +1742,9 @@ export class OfficeRenderer {
     return !this.blockedTiles.has(`${col},${row}`)
   }
 
-  getZoneTargetCandidates(zone, activity = null) {
-    const candidates = []
-    const seen = new Set()
+  getZoneTargetCandidates(zone: Zone, activity: string | null = null): any[] {
+    const candidates: any[] = []
+    const seen = new Set<string>()
     const margin = zone.style === 'room' ? 1 : 0
     const minCol = zone.bounds.x + margin
     const maxCol = zone.bounds.x + zone.bounds.width - 1 - margin
@@ -1727,7 +1753,7 @@ export class OfficeRenderer {
     const centerCol = zone.bounds.x + zone.bounds.width / 2
     const centerRow = zone.bounds.y + zone.bounds.height / 2
 
-    const addCandidate = (target, requireWalkable = true) => {
+    const addCandidate = (target: any, requireWalkable = true) => {
       const col = target.col
       const row = target.row
       const targetMinCol = target.allowEdge ? zone.bounds.x : minCol
@@ -1752,7 +1778,7 @@ export class OfficeRenderer {
 
     zone.slots?.forEach((slot) => addCandidate(slot, true))
 
-    const generated = []
+    const generated: TilePos[] = []
     for (let row = minRow; row <= maxRow; row += 1) {
       for (let col = minCol; col <= maxCol; col += 1) {
         if (!this.isWalkableTile(col, row)) continue
@@ -1773,7 +1799,7 @@ export class OfficeRenderer {
     return candidates
   }
 
-  getZoneRoamCandidates(zone, anchorTile = null) {
+  getZoneRoamCandidates(zone: Zone, anchorTile: any = null): any[] {
     const candidates = this.getZoneTargetCandidates(zone, null)
 
     if (!anchorTile) return candidates
@@ -1783,7 +1809,7 @@ export class OfficeRenderer {
     )
   }
 
-  getAgentTargetTile(agent, index, zone = this.getAgentZone(agent), candidates = null) {
+  getAgentTargetTile(agent: Agent, index: number, zone: Zone | null = this.getAgentZone(agent), candidates: any[] | null = null): TilePos {
     if (!zone) return { col: 0, row: 0 }
 
     const availableCandidates = candidates || this.getZoneTargetCandidates(zone)
@@ -1807,7 +1833,7 @@ export class OfficeRenderer {
     }
   }
 
-  drawAgent(ctx, agent, x, y, sprite, frame, facingRight, options = {}) {
+  drawAgent(ctx: CanvasRenderingContext2D, agent: Agent, x: number, y: number, sprite: any, frame: number, facingRight: boolean, options: any = {}): void {
     if (!sprite) return
 
     const {
@@ -1985,7 +2011,7 @@ export class OfficeRenderer {
     isMoving = false,
     facingRight = true,
     index = 0,
-  }) {
+  }: AgentPoseInput): any {
     if (isMoving) {
       return { row: 0 }
     }
@@ -2076,7 +2102,7 @@ export class OfficeRenderer {
     }
   }
 
-  drawAgentPoseProp(ctx, prop, placement) {
+  drawAgentPoseProp(ctx: CanvasRenderingContext2D, prop: string | null, placement: any): void {
     const {
       x,
       y,
@@ -2174,7 +2200,7 @@ export class OfficeRenderer {
     ctx.restore()
   }
 
-  drawAgentActivityPulse(ctx, x, y, drawWidth, activity, replay = false) {
+  drawAgentActivityPulse(ctx: CanvasRenderingContext2D, x: number, y: number, drawWidth: number, activity: string | null, replay: boolean = false): void {
     const color = this.getActivityPulseColor(activity, replay)
     const centerX = x + this.tileSize / 2
     const centerY = y + this.tileSize - 2
@@ -2197,8 +2223,8 @@ export class OfficeRenderer {
     ctx.restore()
   }
 
-  getActivityPulseColor(activity, replay = false) {
-    const palette = {
+  getActivityPulseColor(activity: string | null, replay: boolean = false): string {
+    const palette: Record<string, string> = {
       computer: replay ? 'rgba(116, 224, 255, 1)' : 'rgba(116, 224, 255, 0.9)',
       research: replay ? 'rgba(255, 209, 120, 1)' : 'rgba(255, 209, 120, 0.9)',
       meeting: replay ? 'rgba(163, 189, 255, 1)' : 'rgba(163, 189, 255, 0.9)',
@@ -2206,10 +2232,10 @@ export class OfficeRenderer {
       rest: replay ? 'rgba(241, 166, 206, 1)' : 'rgba(241, 166, 206, 0.9)',
     }
 
-    return palette[activity] || (replay ? 'rgba(157, 226, 255, 1)' : 'rgba(157, 226, 255, 0.9)')
+    return palette[activity ?? ''] || (replay ? 'rgba(157, 226, 255, 1)' : 'rgba(157, 226, 255, 0.9)')
   }
 
-  fillTileRect(col, row, width, height, color, alpha = 1, lineAlpha = 0) {
+  fillTileRect(col: number, row: number, width: number, height: number, color: string, alpha: number = 1, lineAlpha: number = 0): void {
     const { x, y } = this.tileToScreen(col, row)
     this.ctx.save()
     this.ctx.globalAlpha = alpha
@@ -2225,7 +2251,7 @@ export class OfficeRenderer {
     this.ctx.restore()
   }
 
-  strokeTileRect(col, row, width, height, color = '#7dc3ff') {
+  strokeTileRect(col: number, row: number, width: number, height: number, color: string = '#7dc3ff'): void {
     const { x, y } = this.tileToScreen(col, row)
     this.ctx.save()
     this.ctx.strokeStyle = color
@@ -2239,7 +2265,7 @@ export class OfficeRenderer {
   // P0 Feature: Agent Name Labels
   // =========================================================================
 
-  drawAgentNameLabel(ctx, agent, drawX, drawY, drawWidth, spriteScale) {
+  drawAgentNameLabel(ctx: CanvasRenderingContext2D, agent: Agent, drawX: number, drawY: number, drawWidth: number, spriteScale: number): void {
     const name = agent.name || agent.id || ''
     const displayName = name.length > 10 ? name.slice(0, 10) : name
     if (!displayName) return
@@ -2285,7 +2311,7 @@ export class OfficeRenderer {
   // P0 Feature: Error State Visual Alarm
   // =========================================================================
 
-  drawAgentErrorAlarm(ctx, x, y, drawX, drawY, drawWidth, drawHeight, spriteScale) {
+  drawAgentErrorAlarm(ctx: CanvasRenderingContext2D, x: number, y: number, drawX: number, drawY: number, drawWidth: number, drawHeight: number, spriteScale: number): void {
     const now = Date.now()
     const breathe = 0.5 + 0.5 * Math.sin(now / 300)
 
@@ -2333,7 +2359,7 @@ export class OfficeRenderer {
     ctx.restore()
   }
 
-  drawErrorZoneOverlays(agents) {
+  drawErrorZoneOverlays(agents: Agent[]): void {
     // Find zones that contain at least one errored agent
     const errorZoneIds = new Set()
     agents.forEach((agent) => {

@@ -263,7 +263,7 @@ function App() {
             <SceneEditor
               activePresetId={activePresetId}
               presets={presets}
-              hasUnsavedChanges={hasUnsavedChanges}
+              hasUnsavedChanges={hasUnsavedChanges ?? false}
               isSavingPreset={isSavingPreset}
               newPresetName={newPresetName}
               selectedType={selectedType}

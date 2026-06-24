@@ -44,70 +44,29 @@ app.add_middleware(
 )
 
 # Estado global de agentes
-AGENT_STATE_FILE = os.getenv("AGENT_STATE_FILE", "/data/agents.json")
 
 class AgentState:
     def __init__(self):
         self.agents: Dict[str, dict] = {}
         self.connections: List[WebSocket] = []
-        self._load_from_file()
+        from db import AgentStore
+        self.store = AgentStore()
+        self._save_enabled = True
 
-    def _save_to_file(self):
+    async def _save_to_file(self):
+        pass
+
+    async def _load_from_file(self):
         try:
-            os.makedirs(os.path.dirname(AGENT_STATE_FILE), exist_ok=True)
-            with open(AGENT_STATE_FILE, "w", encoding="utf-8") as f:
-                json.dump(list(self.agents.values()), f, indent=2, ensure_ascii=False)
+            agents = await self.store.get_all_agents()
+            for agent in agents:
+                self.agents[agent["id"]] = agent
+            logger.info(f"Loaded {len(agents)} agents from SQLite")
         except Exception as e:
-            logger.error(f"Error saving agent state: {e}")
+            logger.warning(f"Could not load agents from SQLite: {e}")
 
-    def _load_from_file(self):
-        if os.path.exists(AGENT_STATE_FILE):
-            try:
-                with open(AGENT_STATE_FILE, "r", encoding="utf-8") as f:
-                    agents = json.load(f)
-                for agent in agents:
-                    if "id" in agent:
-                        self.agents[agent["id"]] = agent
-                logger.info(f"Cargados {len(agents)} agentes desde archivo")
-            except Exception as e:
-                logger.error(f"Error loading agent state: {e}")
-
-    def prune_stale_agents(self):
-        now = datetime.now().timestamp()
-        stale_cutoff = now - STALE_AGENT_TTL_HOURS * 3600
-        inactive_cutoff = now - INACTIVE_AGENT_TIMEOUT_SECONDS
-        done_cutoff = now - DONE_AGENT_TIMEOUT_SECONDS
-        
-        stale_agent_ids = []
-
-        for agent_id, agent in self.agents.items():
-            last_activity = agent.get("last_activity")
-            if not last_activity:
-                continue
-
-            try:
-                last_seen = datetime.fromisoformat(last_activity).timestamp()
-            except ValueError:
-                continue
-
-            # 1. Hard cutoff (1 hora)
-            if last_seen < stale_cutoff:
-                stale_agent_ids.append(agent_id)
-                continue
-            
-            # 2. Inactivity cutoff (10 min si está idle/done/waiting)
-            status = agent.get("status", "idle")
-            if status == "done" and last_seen < done_cutoff:
-                stale_agent_ids.append(agent_id)
-                continue
-
-            if status in {"idle", "waiting", "error"} and last_seen < inactive_cutoff:
-                stale_agent_ids.append(agent_id)
-
-        for agent_id in stale_agent_ids:
-            self.remove_agent(agent_id)
-
-        return stale_agent_ids
+    async def prune_stale_agents(self):
+        await self.store.prune_stale(STALE_AGENT_TTL_HOURS)
     
     def add_agent(self, agent_id: str, name: str = None):
         now_iso = datetime.now().isoformat()
@@ -128,14 +87,16 @@ class AgentState:
             "last_work_at": now_iso,
         }
         logger.info(f"Agente creado: {agent_id} ({self.agents[agent_id]['name']})")
-        self._save_to_file()
+        import asyncio as _asyncio_add
+        _asyncio_add.ensure_future(self.store.upsert_agent(self.agents[agent_id]))
         return self.agents[agent_id]
     
     def update_agent(self, agent_id: str, **kwargs):
         if agent_id in self.agents:
             self.agents[agent_id].update(kwargs)
             self.agents[agent_id]["last_activity"] = datetime.now().isoformat()
-            self._save_to_file()
+            import asyncio as _asyncio
+            _asyncio.ensure_future(self.store.upsert_agent(self.agents[agent_id]))
             return self.agents[agent_id]
         return None
     
@@ -143,12 +104,13 @@ class AgentState:
         if agent_id in self.agents:
             agent = self.agents.pop(agent_id)
             logger.info(f"Agente removido: {agent_id}")
-            self._save_to_file()
+            import asyncio as _asyncio_rem
+            _asyncio_rem.ensure_future(self.store.delete_agent(agent_id))
             return agent
         return None
     
-    def get_all_agents(self) -> List[dict]:
-        self.prune_stale_agents()
+    async def get_all_agents(self) -> List[dict]:
+        await self.prune_stale_agents()
         return list(self.agents.values())
 
 state = AgentState()
@@ -399,7 +361,7 @@ async def websocket_endpoint(websocket: WebSocket):
     # Enviar estado inicial
     await websocket.send_json({
         "type": "init",
-        "agents": state.get_all_agents(),
+        "agents": await state.get_all_agents(),
         "layout": layout_manager.active_layout,
         "timestamp": datetime.now().isoformat()
     })
@@ -991,6 +953,11 @@ async def lifespan(app: FastAPI):
     logger.info("👋 Hermes Pixel UI Backend detenido")
 
 app.router.lifespan_context = lifespan
+
+@app.on_event("startup")
+async def startup():
+    await state.store.init()
+    await state._load_from_file()
 
 if __name__ == "__main__":
     # Silenciamos los logs de uvicorn para que solo muestren errores
