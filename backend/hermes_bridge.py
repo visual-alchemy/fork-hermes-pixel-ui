@@ -47,6 +47,12 @@ class HermesEvent:
         }
 
 
+# Session ID → custom name overrides (set via API or hardcoded)
+AGENT_NAME_OVERRIDES = {
+    "ad3fc767": "Oracle",
+}
+
+
 class HermesBridge:
     """
     Puente entre Hermes y Pixel UI
@@ -222,6 +228,9 @@ class HermesBridge:
         return None
 
     def _get_agent_name(self, session_id: str) -> str:
+        # Check hardcoded name overrides first
+        if session_id in AGENT_NAME_OVERRIDES:
+            return AGENT_NAME_OVERRIDES[session_id]
         title = self._get_session_title_from_db(session_id)
         if title:
             return title

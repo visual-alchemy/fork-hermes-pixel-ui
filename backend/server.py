@@ -44,10 +44,33 @@ app.add_middleware(
 )
 
 # Estado global de agentes
+AGENT_STATE_FILE = os.getenv("AGENT_STATE_FILE", "/data/agents.json")
+
 class AgentState:
     def __init__(self):
         self.agents: Dict[str, dict] = {}
         self.connections: List[WebSocket] = []
+        self._load_from_file()
+
+    def _save_to_file(self):
+        try:
+            os.makedirs(os.path.dirname(AGENT_STATE_FILE), exist_ok=True)
+            with open(AGENT_STATE_FILE, "w", encoding="utf-8") as f:
+                json.dump(list(self.agents.values()), f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            logger.error(f"Error saving agent state: {e}")
+
+    def _load_from_file(self):
+        if os.path.exists(AGENT_STATE_FILE):
+            try:
+                with open(AGENT_STATE_FILE, "r", encoding="utf-8") as f:
+                    agents = json.load(f)
+                for agent in agents:
+                    if "id" in agent:
+                        self.agents[agent["id"]] = agent
+                logger.info(f"Cargados {len(agents)} agentes desde archivo")
+            except Exception as e:
+                logger.error(f"Error loading agent state: {e}")
 
     def prune_stale_agents(self):
         now = datetime.now().timestamp()
@@ -105,12 +128,14 @@ class AgentState:
             "last_work_at": now_iso,
         }
         logger.info(f"Agente creado: {agent_id} ({self.agents[agent_id]['name']})")
+        self._save_to_file()
         return self.agents[agent_id]
     
     def update_agent(self, agent_id: str, **kwargs):
         if agent_id in self.agents:
             self.agents[agent_id].update(kwargs)
             self.agents[agent_id]["last_activity"] = datetime.now().isoformat()
+            self._save_to_file()
             return self.agents[agent_id]
         return None
     
@@ -118,6 +143,7 @@ class AgentState:
         if agent_id in self.agents:
             agent = self.agents.pop(agent_id)
             logger.info(f"Agente removido: {agent_id}")
+            self._save_to_file()
             return agent
         return None
     
