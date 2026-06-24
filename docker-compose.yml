@@ -9,6 +9,7 @@ services:
       - "9000:9000"
     volumes:
       - ${HOME}/.hermes/sessions:/root/.hermes/sessions:ro
+      - ./backend/presets:/app/backend/presets
     environment:
       - HERMES_SESSIONS_DIR=/root/.hermes/sessions
       - PIXEL_UI_DISABLE_CAFFEINATE=1
