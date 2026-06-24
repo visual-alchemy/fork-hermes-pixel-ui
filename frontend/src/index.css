@@ -859,3 +859,68 @@ select {
   border-radius: 2px;
 }
 
+/* Layout Preset Manager */
+.preset-selector-section {
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 16px;
+  border-bottom: 1px dashed var(--line-soft);
+}
+
+.preset-select {
+  flex: 1;
+  padding: 10px;
+  background: rgba(16, 21, 33, 0.85);
+  color: var(--text-main);
+  border: 1px solid var(--line-soft);
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 120ms ease;
+}
+
+.preset-select:focus {
+  border-color: var(--accent-strong);
+}
+
+.preset-input {
+  flex: 1;
+  padding: 10px;
+  background: rgba(16, 21, 33, 0.85);
+  color: var(--text-main);
+  border: 1px solid var(--line-soft);
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+}
+
+.preset-input:focus {
+  border-color: var(--accent-strong);
+}
+
+.preset-button-row {
+  display: flex;
+  gap: 8px;
+}
+
+.preset-btn-small {
+  padding: 8px 12px;
+  font-size: 14px;
+  border-width: 1px;
+}
+
+.preset-btn-delete {
+  background: rgba(230, 57, 70, 0.15);
+  border-color: rgba(230, 57, 70, 0.6);
+  color: #ffb3b8;
+}
+
+.preset-btn-delete:hover {
+  background: rgba(230, 57, 70, 0.4);
+  border-color: #ffb3b8;
+  color: #fff;
+}
+

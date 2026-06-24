@@ -128,6 +128,171 @@ class AgentState:
 state = AgentState()
 
 
+# Gestor de Layout Presets
+PRESETS_DIR = Path(__file__).parent / "presets"
+ACTIVE_LAYOUT_FILE = PRESETS_DIR / "active_layout.txt"
+DEFAULT_LAYOUT_SRC = Path(__file__).parent.parent / "layouts" / "default.json"
+
+class LayoutManager:
+    def __init__(self):
+        self.active_layout_id: str = "default"
+        self.active_layout: dict = {}
+        self._init_presets()
+
+    def _init_presets(self):
+        PRESETS_DIR.mkdir(exist_ok=True)
+        default_dst = PRESETS_DIR / "default.json"
+        
+        # Copiar layout base si no existe
+        if not default_dst.exists():
+            if DEFAULT_LAYOUT_SRC.exists():
+                shutil.copy(DEFAULT_LAYOUT_SRC, default_dst)
+                logger.info("📁 Copiado default.json a la carpeta de presets")
+            else:
+                # Fallback layout básico si no se encuentra default.json
+                logger.warning(f"⚠️ No se encontró el layout de origen en {DEFAULT_LAYOUT_SRC}")
+                fallback_layout = {
+                    "name": "Hermes Batcave Operations",
+                    "version": "0.4.0",
+                    "gridSize": 32,
+                    "dimensions": {"width": 28, "height": 26},
+                    "theme": {
+                        "walkwayFloorIndex": 4,
+                        "walkwaySurface": "hall",
+                        "wallColor": "#121620",
+                        "trimColor": "#00b4d8",
+                        "shadowColor": "rgba(0, 0, 0, 0.45)",
+                        "officeBounds": {"x": 1, "y": 1, "width": 26, "height": 24}
+                    },
+                    "zones": [],
+                    "furniture": []
+                }
+                with open(default_dst, "w", encoding="utf-8") as f:
+                    json.dump(fallback_layout, f, indent=2)
+
+        # Cargar id del layout activo
+        if ACTIVE_LAYOUT_FILE.exists():
+            try:
+                layout_id = ACTIVE_LAYOUT_FILE.read_text(encoding="utf-8").strip()
+                if (PRESETS_DIR / f"{layout_id}.json").exists():
+                    self.active_layout_id = layout_id
+                else:
+                    self.active_layout_id = "default"
+            except Exception as e:
+                logger.warning(f"⚠️ Error al leer active_layout.txt: {e}")
+                self.active_layout_id = "default"
+        else:
+            self.active_layout_id = "default"
+            try:
+                ACTIVE_LAYOUT_FILE.write_text("default", encoding="utf-8")
+            except Exception:
+                pass
+
+        # Cargar layout activo
+        self.load_active_layout()
+
+    def load_active_layout(self):
+        layout_path = PRESETS_DIR / f"{self.active_layout_id}.json"
+        try:
+            with open(layout_path, "r", encoding="utf-8") as f:
+                self.active_layout = json.load(f)
+            self.active_layout["id"] = self.active_layout_id
+            logger.info(f"📂 Layout activo cargado: {self.active_layout_id}")
+        except Exception as e:
+            logger.error(f"❌ Error al cargar layout {self.active_layout_id}: {e}")
+            # Fallback a default.json
+            if self.active_layout_id != "default":
+                self.active_layout_id = "default"
+                self.load_active_layout()
+
+    def get_presets(self) -> List[dict]:
+        presets = []
+        for file_path in PRESETS_DIR.glob("*.json"):
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                stat = file_path.stat()
+                presets.append({
+                    "id": file_path.stem,
+                    "name": data.get("name", file_path.stem),
+                    "is_default": file_path.stem == "default",
+                    "modified_at": datetime.fromtimestamp(stat.st_mtime).isoformat()
+                })
+            except Exception as e:
+                logger.warning(f"⚠️ Error al leer preset {file_path.name}: {e}")
+        return sorted(presets, key=lambda x: (not x["is_default"], x["name"]))
+
+    def get_layout(self, layout_id: str) -> Optional[dict]:
+        layout_path = PRESETS_DIR / f"{layout_id}.json"
+        if not layout_path.exists():
+            return None
+        try:
+            with open(layout_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return None
+
+    def save_layout(self, name: str, layout_data: dict, layout_id: Optional[str] = None) -> str:
+        if not layout_id:
+            safe_name = "".join(c for c in name if c.isalnum() or c in (" ", "_", "-")).strip().lower()
+            safe_name = safe_name.replace(" ", "_")
+            if not safe_name:
+                safe_name = f"preset_{int(datetime.now().timestamp())}"
+            layout_id = safe_name
+            if layout_id == "default":
+                layout_id = "default_custom"
+        
+        # Evitar guardar el id temporal en el archivo JSON
+        data_to_save = layout_data.copy()
+        data_to_save.pop("id", None)
+        data_to_save["name"] = name
+        
+        layout_path = PRESETS_DIR / f"{layout_id}.json"
+        with open(layout_path, "w", encoding="utf-8") as f:
+            json.dump(data_to_save, f, indent=2, ensure_ascii=False)
+            
+        logger.info(f"💾 Preset guardado: {layout_id} ({name})")
+        return layout_id
+
+    def activate_layout(self, layout_id: str) -> bool:
+        layout_path = PRESETS_DIR / f"{layout_id}.json"
+        if not layout_path.exists():
+            return False
+        
+        self.active_layout_id = layout_id
+        self.load_active_layout()
+        
+        try:
+            ACTIVE_LAYOUT_FILE.write_text(layout_id, encoding="utf-8")
+        except Exception as e:
+            logger.warning(f"⚠️ No se pudo guardar active_layout.txt: {e}")
+            
+        return True
+
+    def delete_layout(self, layout_id: str) -> bool:
+        if layout_id == "default":
+            return False
+            
+        layout_path = PRESETS_DIR / f"{layout_id}.json"
+        if not layout_path.exists():
+            return False
+            
+        layout_path.unlink()
+        logger.info(f"🗑️ Preset eliminado: {layout_id}")
+        
+        if self.active_layout_id == layout_id:
+            self.activate_layout("default")
+            
+        return True
+
+layout_manager = LayoutManager()
+
+class SaveLayoutRequest(BaseModel):
+    name: str
+    layout: dict
+    layout_id: Optional[str] = None
+
+
 def _parse_iso_timestamp(value: Optional[str]) -> Optional[datetime]:
     if not value:
         return None
@@ -209,6 +374,7 @@ async def websocket_endpoint(websocket: WebSocket):
     await websocket.send_json({
         "type": "init",
         "agents": state.get_all_agents(),
+        "layout": layout_manager.active_layout,
         "timestamp": datetime.now().isoformat()
     })
     
@@ -294,6 +460,60 @@ async def get_status():
         "live_sessions": len(getattr(hermes_bridge, 'live_sessions', set())),
         "timestamp": datetime.now().isoformat()
     }
+
+@app.get("/api/layouts")
+async def get_layouts():
+    """Listar todos los presets de layouts disponibles"""
+    return {"presets": layout_manager.get_presets()}
+
+@app.get("/api/layouts/active")
+async def get_active_layout():
+    """Obtener el layout activo actual"""
+    return layout_manager.active_layout
+
+@app.get("/api/layouts/{layout_id}")
+async def get_layout(layout_id: str):
+    """Obtener un preset de layout específico"""
+    layout = layout_manager.get_layout(layout_id)
+    if layout:
+        return layout
+    return {"error": "Layout no encontrado"}, 404
+
+@app.post("/api/layouts")
+async def save_layout(req: SaveLayoutRequest):
+    """Guardar un nuevo preset de layout"""
+    layout_id = layout_manager.save_layout(req.name, req.layout, req.layout_id)
+    return {"status": "ok", "layout_id": layout_id, "name": req.name}
+
+@app.post("/api/layouts/{layout_id}/activate")
+async def activate_layout(layout_id: str):
+    """Activar un preset de layout y notificar a los clientes"""
+    success = layout_manager.activate_layout(layout_id)
+    if success:
+        await broadcast({
+            "type": "layout_updated",
+            "layout": layout_manager.active_layout
+        })
+        return {"status": "ok", "layout_id": layout_id}
+    return {"error": "Layout no encontrado"}, 404
+
+@app.delete("/api/layouts/{layout_id}")
+async def delete_layout(layout_id: str):
+    """Eliminar un preset de layout"""
+    if layout_id == "default":
+        return {"error": "No se puede eliminar el layout predeterminado"}, 400
+    
+    was_active = (layout_manager.active_layout_id == layout_id)
+    
+    success = layout_manager.delete_layout(layout_id)
+    if success:
+        if was_active:
+            await broadcast({
+                "type": "layout_updated",
+                "layout": layout_manager.active_layout
+            })
+        return {"status": "ok"}
+    return {"error": "Layout no encontrado"}, 404
 
 # Broadcast a todos los clientes conectados
 async def broadcast(message: dict):
