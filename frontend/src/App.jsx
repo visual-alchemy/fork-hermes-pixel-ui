@@ -178,11 +178,37 @@ function App() {
   const [selectedType, setSelectedType] = useState('DESK')
   const [connected, setConnected] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [selectedAgentId, setSelectedAgentId] = useState(null)
+  const [terminalLogs, setTerminalLogs] = useState([])
+  const [agentLogs, setAgentLogs] = useState({})
 
   const canvasRef = useRef(null)
   const wsRef = useRef(null)
   const rendererRef = useRef(null)
   const agentsRef = useRef([])
+
+  const addLog = (agentId, agentName, type, text) => {
+    const timestamp = new Date().toLocaleTimeString()
+    const logItem = { id: `log_${Date.now()}_${Math.random()}`, timestamp, agentName: agentName || 'SYSTEM', type, text }
+
+    setTerminalLogs((prev) => [logItem, ...prev].slice(0, 100))
+
+    if (agentId) {
+      setAgentLogs((prev) => {
+        const currentList = prev[agentId] || []
+        return {
+          ...prev,
+          [agentId]: [logItem, ...currentList].slice(0, 50)
+        }
+      })
+    }
+  }
+
+  useEffect(() => {
+    if (rendererRef.current) {
+      rendererRef.current.selectedAgentId = selectedAgentId
+    }
+  }, [selectedAgentId])
 
   useEffect(() => {
     const init = async () => {
@@ -255,33 +281,55 @@ function App() {
   }
 
   const handleMouseDown = (event) => {
-    if (!editMode || !rendererRef.current) return
+    if (editMode) {
+      if (!rendererRef.current) return
+      const pos = rendererRef.current.getGridPos(event.clientX, event.clientY)
 
-    const pos = rendererRef.current.getGridPos(event.clientX, event.clientY)
+      if (event.shiftKey || event.button === 2) {
+        const target = rendererRef.current.getFurnitureAtTile(pos.col, pos.row)
+        if (!target) return
+        const newFurniture = layout.furniture.filter((item) => item.id !== target.id)
+        setLayout({ ...layout, furniture: newFurniture })
+        return
+      }
 
-    if (event.shiftKey || event.button === 2) {
-      const target = rendererRef.current.getFurnitureAtTile(pos.col, pos.row)
-      if (!target) return
-      const newFurniture = layout.furniture.filter((item) => item.id !== target.id)
-      setLayout({ ...layout, furniture: newFurniture })
+      if (!rendererRef.current.canPlaceFurnitureAt(selectedType, pos.col, pos.row)) return
+
+      setLayout({
+        ...layout,
+        furniture: [
+          ...layout.furniture,
+          {
+            id: `f_${Date.now()}`,
+            type: selectedType.toLowerCase(),
+            x: pos.col,
+            y: pos.row,
+            rotation: 0,
+          },
+        ],
+      })
       return
     }
 
-    if (!rendererRef.current.canPlaceFurnitureAt(selectedType, pos.col, pos.row)) return
+    // Agent selection mode in canvas
+    if (rendererRef.current && canvasRef.current) {
+      const rect = canvasRef.current.getBoundingClientRect()
+      const clickX = event.clientX - rect.left
+      const clickY = event.clientY - rect.top
 
-    setLayout({
-      ...layout,
-      furniture: [
-        ...layout.furniture,
-        {
-          id: `f_${Date.now()}`,
-          type: selectedType.toLowerCase(),
-          x: pos.col,
-          y: pos.row,
-          rotation: 0,
-        },
-      ],
-    })
+      const clickedAgent = Object.entries(rendererRef.current.agentStates).find(([id, state]) => {
+        const agentX = state.x + 16 // centering adjustment
+        const agentY = state.y + 16
+        const dist = Math.hypot(clickX - agentX, clickY - agentY)
+        return dist < 24 // 24px radius click
+      })
+
+      if (clickedAgent) {
+        setSelectedAgentId(clickedAgent[0])
+      } else {
+        setSelectedAgentId(null)
+      }
+    }
   }
 
   const resetLayout = () => {
@@ -297,6 +345,7 @@ function App() {
 
       ws.onopen = () => {
         setConnected(true)
+        addLog(null, 'SYSTEM', 'system', 'WebSocket link established with Batcomputer.')
       }
 
       ws.onmessage = (event) => {
@@ -304,12 +353,27 @@ function App() {
 
         if (msg.type === 'init') {
           setAgents(msg.agents || [])
+          addLog(null, 'SYSTEM', 'system', `Retrieved ${msg.agents?.length || 0} active agent telemetry links.`)
           return
         }
 
         if (msg.type === 'agent_updated') {
           setAgents((prev) => {
             const found = prev.some((agent) => agent.id === msg.agent.id)
+            const oldAgent = prev.find((a) => a.id === msg.agent.id)
+            
+            if (oldAgent) {
+              if (oldAgent.status !== msg.agent.status) {
+                addLog(msg.agent.id, msg.agent.name, msg.agent.status, `Status: ${msg.agent.status} - "${msg.agent.task || 'Idle'}"`)
+              } else if (oldAgent.task !== msg.agent.task && msg.agent.task) {
+                addLog(msg.agent.id, msg.agent.name, 'info', `Task: "${msg.agent.task}"`)
+              } else if (oldAgent.location !== msg.agent.location) {
+                addLog(msg.agent.id, msg.agent.name, 'system', `Relocated to: ${msg.agent.location}`)
+              }
+            } else {
+              addLog(msg.agent.id, msg.agent.name, 'info', `Monitoring started: "${msg.agent.task || 'Idle'}"`)
+            }
+
             if (!found) return [...prev, msg.agent]
             return prev.map((agent) => (agent.id === msg.agent.id ? msg.agent : agent))
           })
@@ -319,18 +383,26 @@ function App() {
         if (msg.type === 'agent_created') {
           setAgents((prev) => {
             if (prev.some((agent) => agent.id === msg.agent.id)) return prev
+            addLog(msg.agent.id, msg.agent.name, 'info', `Agent initialized: "${msg.agent.task || 'Idle'}"`)
             return [...prev, msg.agent]
           })
           return
         }
 
         if (msg.type === 'agent_removed') {
-          setAgents((prev) => prev.filter((agent) => agent.id !== msg.agent_id))
+          setAgents((prev) => {
+            const removed = prev.find((agent) => agent.id === msg.agent_id)
+            if (removed) {
+              addLog(msg.agent_id, removed.name, 'warn', 'Telemetry signal offline.')
+            }
+            return prev.filter((agent) => agent.id !== msg.agent_id)
+          })
         }
       }
 
       ws.onclose = () => {
         setConnected(false)
+        addLog(null, 'SYSTEM', 'error', 'WebSocket telemetry link offline. Reconnecting...')
         window.setTimeout(connect, 2000)
       }
 
@@ -446,6 +518,8 @@ function App() {
           onMouseDown={handleMouseDown}
           onContextMenu={(event) => event.preventDefault()}
         >
+          <div className="scanlines-overlay" />
+
           {loading ? (
             <div className="loading-panel pixel-panel">
               <span className="loading-title">Loading Assets</span>
@@ -455,7 +529,79 @@ function App() {
             <canvas ref={canvasRef} className="office-canvas" />
           )}
 
-          {!editMode && (
+          {!editMode && selectedAgentId && (
+            (() => {
+              const selectedAgentObj = agentCards.find(a => a.id === selectedAgentId)
+              const selectedAgentLogs = agentLogs[selectedAgentId] || []
+              if (!selectedAgentObj) return null
+
+              return (
+                <aside className="inspector-panel pixel-panel">
+                  <div className="inspector-header">
+                    <span className="eyebrow">Telemetry Inspector</span>
+                    <button className="inspector-clear-btn" onClick={() => setSelectedAgentId(null)}>
+                      CLOSE
+                    </button>
+                  </div>
+                  
+                  <div className="inspector-avatar-box">
+                    {selectedAgentObj.avatar ? (
+                      <img src={selectedAgentObj.avatar} alt={selectedAgentObj.name} />
+                    ) : (
+                      <span>{selectedAgentObj.name.slice(0, 1)}</span>
+                    )}
+                  </div>
+
+                  <div className="panel-heading" style={{ marginBottom: '8px' }}>
+                    <h2 className="inspector-title" style={{ fontSize: '20px' }}>{selectedAgentObj.name}</h2>
+                  </div>
+
+                  <div className="inspector-details">
+                    <div className="inspector-row">
+                      <span className="inspector-label">Session ID</span>
+                      <span className="inspector-value">{selectedAgentObj.id.slice(0, 8)}</span>
+                    </div>
+                    <div className="inspector-row">
+                      <span className="inspector-label">Status</span>
+                      <span className={`inspector-value status-${selectedAgentObj.status}`}>
+                        {selectedAgentObj.statusLabel}
+                      </span>
+                    </div>
+                    <div className="inspector-row">
+                      <span className="inspector-label">Location</span>
+                      <span className="inspector-value">{selectedAgentObj.zoneLabel}</span>
+                    </div>
+                    <div className="inspector-row">
+                      <span className="inspector-label">Role</span>
+                      <span className="inspector-value">{selectedAgentObj.roleLabel}</span>
+                    </div>
+                    <div className="inspector-row" style={{ flexDirection: 'column', gap: '4px', borderBottom: 'none' }}>
+                      <span className="inspector-label">Current Task</span>
+                      <span className="inspector-value" style={{ textAlign: 'left', maxWidth: '100%', whiteSpace: 'normal', color: 'var(--text-main)' }}>
+                        {selectedAgentObj.displayTask}
+                      </span>
+                    </div>
+                  </div>
+
+                  <span className="inspector-section-title">Telemetry Stream</span>
+                  <div className="inspector-logs">
+                    {selectedAgentLogs.length === 0 ? (
+                      <div className="inspector-log-item">No telemetry stream recorded.</div>
+                    ) : (
+                      selectedAgentLogs.map((log) => (
+                        <div key={log.id} className="inspector-log-item">
+                          <span className="inspector-log-time">[{log.timestamp}]</span>
+                          {log.text}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </aside>
+              )
+            })()
+          )}
+
+          {!editMode && !selectedAgentId && (
             <aside className="zone-panel pixel-panel">
               <div className="panel-heading">
                 <span className="eyebrow">Workspace Zones</span>
@@ -547,7 +693,12 @@ function App() {
                 <p className="empty-state">No active agents yet.</p>
               ) : (
                 agentCards.map((agent) => (
-                  <div key={agent.id} className={`staff-item ${agent.isCompact ? 'is-compact' : ''}`}>
+                  <div 
+                    key={agent.id} 
+                    className={`staff-item ${agent.isCompact ? 'is-compact' : ''} ${selectedAgentId === agent.id ? 'is-selected-hud' : ''}`}
+                    onClick={() => setSelectedAgentId(agent.id)}
+                    style={{ cursor: 'pointer' }}
+                  >
                     <div className="staff-profile">
                       <div className="staff-avatar">
                         {agent.avatar ? (
@@ -572,6 +723,37 @@ function App() {
             </div>
           </aside>
         </section>
+
+        {/* Real-time terminal log console */}
+        <div className="terminal-console">
+          <div className="terminal-header">
+            <div className="terminal-title">Batcomputer Telemetry Log Stream</div>
+            <div className="connection-row" style={{ borderBottom: 'none', paddingBottom: 0, gap: '6px' }}>
+              <span className={`connection-dot ${connected ? 'is-online' : 'is-offline'}`} style={{ width: '8px', height: '8px' }} />
+              <span style={{ fontSize: '11px', fontFamily: 'Orbitron, sans-serif' }}>{connected ? 'ONLINE' : 'LINK OFFLINE'}</span>
+            </div>
+          </div>
+          <div className="terminal-body">
+            {terminalLogs.length === 0 ? (
+              <div className="terminal-line">
+                <span className="terminal-timestamp">[{new Date().toLocaleTimeString()}]</span>
+                <span className="terminal-text system">Awaiting telemetry handshake...</span>
+              </div>
+            ) : (
+              terminalLogs.map((log) => (
+                <div key={log.id} className="terminal-line">
+                  <span className="terminal-timestamp">[{log.timestamp}]</span>
+                  <span className="terminal-text system">
+                    <strong>[{log.agentName}]</strong>:
+                  </span>
+                  <span className={`terminal-text ${log.type}`}>
+                    {log.text}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       </main>
     </div>
   )

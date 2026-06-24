@@ -30,6 +30,7 @@ export class OfficeRenderer {
     this.editMode = false
     this.selectedFurnitureType = null
     this.hoverTile = { col: 0, row: 0 }
+    this.selectedAgentId = null
 
     this.offsetX = 0
     this.offsetY = 0
@@ -1833,6 +1834,49 @@ export class OfficeRenderer {
         typingPulse,
         spriteScale,
       })
+    }
+
+    if (this.selectedAgentId === agent.id) {
+      ctx.save()
+      const centerX = drawX + drawWidth / 2
+      const centerY = y + this.tileSize - 2 * spriteScale
+      const radiusX = Math.max(10 * spriteScale, drawWidth * 0.45)
+      const radiusY = Math.max(4 * spriteScale, drawHeight * 0.12)
+
+      const pulse = 1 + 0.12 * Math.sin((Date.now() / 140) % (Math.PI * 2))
+
+      // Glowing targeting ring
+      ctx.strokeStyle = '#00b4d8'
+      ctx.lineWidth = 2
+      ctx.shadowColor = '#00b4d8'
+      ctx.shadowBlur = 8 * pulse
+      
+      // Draw dashed reticle circle
+      ctx.beginPath()
+      ctx.setLineDash([5, 5])
+      ctx.ellipse(centerX, centerY, radiusX * pulse, radiusY * pulse, 0, 0, Math.PI * 2)
+      ctx.stroke()
+
+      // Track nodes at key cardinal angles
+      ctx.setLineDash([])
+      ctx.fillStyle = '#90e0ef'
+      ctx.shadowBlur = 10 * pulse
+
+      // Cardinal points
+      const points = [
+        { x: centerX - radiusX * pulse, y: centerY },
+        { x: centerX + radiusX * pulse, y: centerY },
+        { x: centerX, y: centerY - radiusY * pulse },
+        { x: centerX, y: centerY + radiusY * pulse }
+      ]
+
+      points.forEach(pt => {
+        ctx.beginPath()
+        ctx.arc(pt.x, pt.y, 3, 0, Math.PI * 2)
+        ctx.fill()
+      })
+
+      ctx.restore()
     }
 
     ctx.restore()
