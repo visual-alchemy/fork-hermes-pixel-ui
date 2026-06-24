@@ -29,7 +29,7 @@
       "outline": false,
       "showLabel": true,
       "labelAnchor": { "col": 6.5, "row": 1.6, "align": "center", "offsetY": 4 },
-      "labelMaxWidthTiles": 3.2,
+      "labelMaxWidthTiles": 6.0,
       "bounds": {
         "x": 2,
         "y": 2,
@@ -58,7 +58,7 @@
       "surface": "tile-light",
       "showLabel": true,
       "labelAnchor": { "col": 15.75, "row": 1.65, "align": "center", "offsetY": 6 },
-      "labelMaxWidthTiles": 3.3,
+      "labelMaxWidthTiles": 5.0,
       "bounds": {
         "x": 13,
         "y": 2,
@@ -96,7 +96,7 @@
       "outline": false,
       "showLabel": true,
       "labelAnchor": { "col": 6.5, "row": 18, "align": "center", "offsetY": -6 },
-      "labelMaxWidthTiles": 3.6,
+      "labelMaxWidthTiles": 5.0,
       "bounds": {
         "x": 2,
         "y": 7,
@@ -130,7 +130,7 @@
       "showLabel": true,
       "showInOverview": false,
       "labelAnchor": { "col": 16, "row": 7.65, "align": "center" },
-      "labelMaxWidthTiles": 4.2,
+      "labelMaxWidthTiles": 5.0,
       "bounds": {
         "x": 13,
         "y": 8,
@@ -166,7 +166,7 @@
       "surface": "carpet-blue",
       "showLabel": true,
       "labelAnchor": { "col": 16, "row": 12.8, "align": "center", "offsetY": 6 },
-      "labelMaxWidthTiles": 3.5,
+      "labelMaxWidthTiles": 5.0,
       "bounds": {
         "x": 13,
         "y": 13,

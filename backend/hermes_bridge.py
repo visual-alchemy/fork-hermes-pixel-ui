@@ -186,6 +186,50 @@ class HermesBridge:
         # - 20260420_055637_e6b5d9e5.jsonl -> e6b5d9e5
         return file_path.stem.split('_')[-1] if '_' in file_path.stem else file_path.stem
 
+    def _get_display_name_from_sessions_json(self, session_id: str) -> Optional[str]:
+        try:
+            sessions_json_path = self.session_dir / "sessions.json"
+            if sessions_json_path.exists():
+                with open(sessions_json_path, 'r') as f:
+                    data = json.load(f)
+                    for key, session in data.items():
+                        if session.get("session_id") == session_id:
+                            disp_name = session.get("display_name")
+                            if disp_name and disp_name.lower() != 'hermes agent':
+                                return disp_name
+                            origin = session.get("origin", {})
+                            user_name = origin.get("user_name")
+                            if user_name:
+                                return user_name
+        except Exception as e:
+            logger.debug(f"Error reading sessions.json: {e}")
+        return None
+
+    def _get_session_title_from_db(self, session_id: str) -> Optional[str]:
+        try:
+            db_path = self.session_dir.parent / "state.db"
+            if db_path.exists():
+                import sqlite3
+                conn = sqlite3.connect(str(db_path))
+                cursor = conn.cursor()
+                cursor.execute("SELECT title FROM sessions WHERE id = ? OR parent_session_id = ?", (session_id, session_id))
+                row = cursor.fetchone()
+                conn.close()
+                if row and row[0]:
+                    return row[0]
+        except Exception as e:
+            logger.debug(f"Error querying state.db: {e}")
+        return None
+
+    def _get_agent_name(self, session_id: str) -> str:
+        title = self._get_session_title_from_db(session_id)
+        if title:
+            return title
+        disp_name = self._get_display_name_from_sessions_json(session_id)
+        if disp_name:
+            return disp_name
+        return f"Hermes-{session_id[:6]}"
+
     async def _parse_session_file(self, file_path: Path) -> AsyncIterator[HermesEvent]:
         """Parsear archivo de sesión de Hermes (formato JSONL)"""
         session_id = self._get_session_id_from_path(file_path)
@@ -312,7 +356,7 @@ class HermesBridge:
             self._json_started_sessions.add(session_id)
             yield HermesEvent("agent_started", {
                 "agent_id": session_id,
-                "name": f"Hermes-{session_id[:6]}",
+                "name": self._get_agent_name(session_id),
                 "task": "Session loaded",
                 "platform": data.get("platform", ""),
             })
@@ -761,7 +805,7 @@ class HermesBridge:
             context["tool_burst_count"] = 0
             return HermesEvent("agent_started", {
                 "agent_id": session_id,
-                "name": f"Hermes-{session_id[:6]}",
+                "name": self._get_agent_name(session_id),
                 "task": "Session iniciada"
             })
 
