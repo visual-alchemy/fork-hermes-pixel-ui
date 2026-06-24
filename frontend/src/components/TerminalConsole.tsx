@@ -18,7 +18,7 @@ export function TerminalConsole({ logs, connected }: TerminalConsoleProps) {
         <div className="terminal-title">Batcomputer Telemetry Log Stream</div>
         <div className="connection-row" style={{ borderBottom: 'none', paddingBottom: 0, gap: '6px' }}>
           <span className={`connection-dot ${connected ? 'is-online' : 'is-offline'}`} style={{ width: '8px', height: '8px' }} />
-          <span style={{ fontSize: '11px', fontFamily: 'Orbitron, sans-serif' }}>{connected ? 'ONLINE' : 'LINK OFFLINE'}</span>
+            <span style={{ fontSize: '11px', fontFamily: 'FS Pixel Sans, monospace' }}>{connected ? 'ONLINE' : 'LINK OFFLINE'}</span>
         </div>
       </div>
       <div className="terminal-body">

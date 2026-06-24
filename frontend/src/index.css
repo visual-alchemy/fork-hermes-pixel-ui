@@ -127,7 +127,7 @@ select {
 
 .brand-copy h1,
 .panel-heading h2 {
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'FS Pixel Sans', monospace;
   font-size: 38px;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -184,7 +184,7 @@ select {
 }
 
 .metric-card span {
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'FS Pixel Sans', monospace;
   font-size: 13px;
   color: var(--text-dim);
   text-transform: uppercase;
@@ -192,7 +192,7 @@ select {
 }
 
 .metric-card strong {
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'FS Pixel Sans', monospace;
   font-size: 28px;
   font-weight: 700;
   color: var(--accent-strong);
@@ -638,7 +638,7 @@ select {
 }
 
 .terminal-title {
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'FS Pixel Sans', monospace;
   font-size: 14px;
   color: var(--accent-strong);
   text-transform: uppercase;
@@ -660,7 +660,7 @@ select {
 .terminal-body {
   flex: 1;
   overflow-y: auto;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'FS Pixel Sans', monospace;
   font-size: 13px;
   line-height: 1.4;
   color: rgba(241, 245, 255, 0.85);
@@ -711,7 +711,7 @@ select {
 }
 
 .inspector-title {
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'FS Pixel Sans', monospace;
   font-size: 22px;
   font-weight: 700;
   color: var(--text-main);
@@ -721,7 +721,7 @@ select {
   background: transparent;
   border: 1px solid var(--accent);
   color: var(--accent-strong);
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'FS Pixel Sans', monospace;
   font-size: 11px;
   padding: 4px 8px;
   cursor: pointer;
@@ -775,7 +775,7 @@ select {
 }
 
 .inspector-label {
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'FS Pixel Sans', monospace;
   font-size: 11px;
   color: var(--text-dim);
   text-transform: uppercase;
@@ -783,7 +783,7 @@ select {
 }
 
 .inspector-value {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'FS Pixel Sans', monospace;
   font-size: 13px;
   color: var(--accent-strong);
   text-align: right;
@@ -799,7 +799,7 @@ select {
 .inspector-value.status-done { color: var(--good); }
 
 .inspector-section-title {
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'FS Pixel Sans', monospace;
   font-size: 12px;
   color: var(--accent-strong);
   text-transform: uppercase;
@@ -818,7 +818,7 @@ select {
   border: 1px solid var(--line-soft);
   background: rgba(5, 7, 12, 0.6);
   padding: 6px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'FS Pixel Sans', monospace;
   font-size: 11px;
 }
 
@@ -836,25 +836,25 @@ select {
 }
 
 .staff-task {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'FS Pixel Sans', monospace;
   color: rgba(241, 245, 255, 0.76);
 }
 
 .panel-note {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'FS Pixel Sans', monospace;
   font-size: 13px;
   opacity: 0.85;
 }
 
 .zone-copy strong,
 .staff-main strong {
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'FS Pixel Sans', monospace;
   font-weight: 700;
   letter-spacing: 0.03em;
 }
 
 .status-pill {
-  font-family: 'Orbitron', sans-serif;
+  font-family: 'FS Pixel Sans', monospace;
   font-weight: 600;
   border-radius: 2px;
 }
