@@ -277,11 +277,9 @@ select {
 .zone-panel {
   top: 18px;
   left: 18px;
-  width: 360px;
-  max-height: calc(100% - 36px);
+  width: 280px;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
 }
 
 .editor-sidebar {
@@ -291,13 +289,13 @@ select {
   max-height: calc(100% - 36px);
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
 }
 
 .staff-panel {
   top: 18px;
   right: 18px;
-  width: 420px;
-  max-height: calc(100% - 36px);
+  width: 300px;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -694,14 +692,12 @@ select {
   position: absolute;
   top: 18px;
   left: 18px;
-  width: 360px;
+  width: 280px;
   z-index: 3;
   padding: 16px;
-  max-height: calc(100% - 36px);
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  overflow-y: auto;
+  gap: 10px;
 }
 
 .inspector-header {
@@ -813,7 +809,7 @@ select {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  max-height: 120px;
+  max-height: 80px;
   overflow-y: auto;
   border: 1px solid var(--line-soft);
   background: rgba(5, 7, 12, 0.6);
