@@ -1,5 +1,5 @@
 {
-  "name": "Hermes Pixel Office",
+  "name": "Hermes Batcave Operations",
   "version": "0.4.0",
   "gridSize": 32,
   "dimensions": {
@@ -9,9 +9,9 @@
   "theme": {
     "walkwayFloorIndex": 4,
     "walkwaySurface": "hall",
-    "wallColor": "#20283a",
-    "trimColor": "#5f7292",
-    "shadowColor": "rgba(0, 0, 0, 0.32)",
+    "wallColor": "#121620",
+    "trimColor": "#00b4d8",
+    "shadowColor": "rgba(0, 0, 0, 0.45)",
     "officeBounds": {
       "x": 1,
       "y": 1,
@@ -23,7 +23,7 @@
     {
       "id": "library",
       "name": "Library",
-      "label": "Archive",
+      "label": "Batcomputer Archives",
       "style": "open",
       "surface": "wood",
       "outline": false,
@@ -53,7 +53,7 @@
     {
       "id": "cafe",
       "name": "Cafe",
-      "label": "Brew Bar",
+      "label": "Alfred's Kitchen",
       "style": "room",
       "surface": "tile-light",
       "showLabel": true,
@@ -90,7 +90,7 @@
     {
       "id": "desk",
       "name": "Desk Area",
-      "label": "Main Floor",
+      "label": "Tactical Control",
       "style": "open",
       "surface": "wood",
       "outline": false,
@@ -124,7 +124,7 @@
     {
       "id": "meeting",
       "name": "Meeting",
-      "label": "Meeting Room",
+      "label": "War Room",
       "style": "room",
       "surface": "tile-blue",
       "showLabel": true,
@@ -161,7 +161,7 @@
     {
       "id": "lounge",
       "name": "Lounge",
-      "label": "Recharge",
+      "label": "Batmobile Dock",
       "style": "room",
       "surface": "carpet-blue",
       "showLabel": true,

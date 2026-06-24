@@ -410,8 +410,8 @@ function App() {
       <header className="topbar pixel-panel">
         <div className="brand-copy">
           <span className="eyebrow">Hermes Visual Layer</span>
-          <h1>Pixel Office</h1>
-          <p>Pixel office with active zones to follow the agents.</p>
+          <h1>Batcave Operations Room</h1>
+          <p>Tactical Batcave operations room with active zones to follow the agents.</p>
         </div>
 
         <div className="topbar-side">
@@ -449,7 +449,7 @@ function App() {
           {loading ? (
             <div className="loading-panel pixel-panel">
               <span className="loading-title">Loading Assets</span>
-              <p>Preparing the pixel office.</p>
+              <p>Preparing the Batcave.</p>
             </div>
           ) : (
             <canvas ref={canvasRef} className="office-canvas" />
