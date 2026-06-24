@@ -23,7 +23,7 @@
     {
       "id": "library",
       "name": "Library",
-      "label": "Oracle's Data Vault",
+      "label": "Data Vault",
       "style": "open",
       "surface": "wood",
       "outline": false,
@@ -89,13 +89,13 @@
     {
       "id": "desk",
       "name": "Desk Area",
-      "label": "Surveillance Operations",
+      "label": "Surveillance Ops",
       "style": "open",
       "surface": "wood",
       "outline": false,
       "showLabel": true,
       "labelAnchor": { "col": 7.5, "row": 9.5, "align": "center", "offsetY": 4 },
-      "labelMaxWidthTiles": 6.0,
+      "labelMaxWidthTiles": 7.0,
       "bounds": {
         "x": 2,
         "y": 9,
@@ -129,7 +129,7 @@
     {
       "id": "meeting",
       "name": "Meeting",
-      "label": "Tactical Briefing Room",
+      "label": "Briefing Room",
       "style": "room",
       "surface": "tile-blue",
       "showLabel": true,

@@ -727,6 +727,10 @@ export class OfficeRenderer {
     this.ctx.lineWidth = 2
     this.ctx.strokeRect(chipX + 1, chipY + 1, labelWidth - 2, labelHeight - 2)
 
+    this.ctx.beginPath()
+    this.ctx.rect(chipX + paddingX, chipY + 2, labelWidth - paddingX * 2, labelHeight - 4)
+    this.ctx.clip()
+
     this.ctx.fillStyle = '#1a2130'
     this.ctx.textAlign = 'left'
     this.ctx.textBaseline = 'middle'
