@@ -943,6 +943,10 @@ async def lifespan(app: FastAPI):
     # Configurar callback y arrancar bridge
     hermes_bridge.set_event_callback(handle_hermes_event)
     bridge_task = asyncio.create_task(hermes_bridge.start_listening())
+
+    # Init SQLite agent store
+    await state.store.init()
+    await state._load_from_file()
     
     yield
     
@@ -953,11 +957,6 @@ async def lifespan(app: FastAPI):
     logger.info("👋 Hermes Pixel UI Backend detenido")
 
 app.router.lifespan_context = lifespan
-
-@app.on_event("startup")
-async def startup():
-    await state.store.init()
-    await state._load_from_file()
 
 if __name__ == "__main__":
     # Silenciamos los logs de uvicorn para que solo muestren errores
