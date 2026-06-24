@@ -644,40 +644,40 @@ export class OfficeRenderer {
   getSurfacePalette(surface) {
     const palettes = {
       hall: {
-        base: '#b3b7bd',
-        alt: '#a3a8af',
-        line: 'rgba(255, 255, 255, 0.42)',
+        base: '#1a1f29',
+        alt: '#151922',
+        line: 'rgba(0, 180, 216, 0.15)',
       },
       wood: {
-        base: '#9d6a3c',
-        alt: '#ab7646',
-        line: 'rgba(78, 48, 22, 0.55)',
-        seam: 'rgba(86, 53, 25, 0.42)',
+        base: '#20242c',
+        alt: '#1a1d24',
+        line: 'rgba(0, 0, 0, 0.4)',
+        seam: 'rgba(0, 0, 0, 0.3)',
       },
       'tile-light': {
-        base: '#d6d1ca',
-        alt: '#e3ddd6',
-        line: 'rgba(137, 128, 118, 0.42)',
+        base: '#2a2f3a',
+        alt: '#232832',
+        line: 'rgba(0, 180, 216, 0.18)',
       },
       office: {
-        base: '#c0b7ae',
-        alt: '#b6aea4',
-        line: 'rgba(255, 255, 255, 0.08)',
+        base: '#1f2430',
+        alt: '#181c26',
+        line: 'rgba(0, 180, 216, 0.1)',
       },
       'tile-blue': {
-        base: '#b8c4d0',
-        alt: '#c5d0db',
-        line: 'rgba(87, 100, 116, 0.34)',
+        base: '#141b2a',
+        alt: '#0f1420',
+        line: 'rgba(0, 180, 216, 0.28)',
       },
       'carpet-blue': {
-        base: '#5c7f9d',
-        alt: '#6b8cab',
-        line: 'rgba(255, 255, 255, 0.08)',
+        base: '#101520',
+        alt: '#151b28',
+        line: 'rgba(0, 180, 216, 0.08)',
       },
       brick: {
-        base: '#83909e',
-        alt: '#8d9baa',
-        line: 'rgba(77, 85, 94, 0.48)',
+        base: '#222831',
+        alt: '#2c3440',
+        line: 'rgba(0, 0, 0, 0.5)',
       },
     }
 
@@ -957,7 +957,7 @@ export class OfficeRenderer {
       const movementIndex = movementIndexes.get(`${movementGroupKey}:${agent.id}`) ?? zoneIndex
       const state = this.updateAgentMovement(agent, movementIndex)
       const visual = visualAssignments.get(agent.id) || { characterIndex: 0, hueShift: 0 }
-      const sprite = this.assetLoader.getTintedCharacter(visual.characterIndex, visual.hueShift)
+      const sprite = this.assetLoader.getCustomCharacter(agent.name, visual.characterIndex, visual.hueShift)
       const frame = state.isMoving ? this.animationFrame : this.animationFrame % 2
       const deskFocus = this.isDeskComputerFocused(agent, state, zone, activity)
       const breakFocus = this.isBreakSeatFocused(agent, state, zone, activity)

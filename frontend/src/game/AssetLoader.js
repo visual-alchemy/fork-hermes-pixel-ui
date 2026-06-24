@@ -98,11 +98,101 @@ export class AssetLoader {
     return canvas;
   }
 
-  getCharacterAvatar(index, hueShift = 0) {
-    const cacheKey = `${index}:${hueShift}`;
+  getCustomCharacter(name, index, hueShift = 0) {
+    const nameLower = (name || '').toLowerCase();
+    const cacheKey = `${index}:${hueShift}:${nameLower}`;
+    if (this.tintCache[cacheKey]) return this.tintCache[cacheKey];
+
+    const baseImg = this.characters[index % this.characters.length];
+    if (!baseImg) return null;
+
+    if (!nameLower.includes('batman') && !nameLower.includes('alfred') && !nameLower.includes('bruce') && !nameLower.includes('robin') && !nameLower.includes('batgirl')) {
+      return this.getTintedCharacter(index, hueShift);
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = baseImg.width;
+    canvas.height = baseImg.height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(baseImg, 0, 0);
+
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imgData.data;
+
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i];
+      const g = data[i+1];
+      const b = data[i+2];
+      const a = data[i+3];
+
+      if (a === 0) continue;
+
+      const isHair = (r > 120 && r < 185 && g > 80 && g < 135 && b > 40 && b < 85);
+      const isSuit = (r < 60 && g > 50 && g < 120 && b > 120 && b < 200);
+      const isSkin = (r > 200 && r < 250 && g > 130 && g < 185 && b > 90 && b < 145);
+      const isWhite = (r > 220 && g > 220 && b > 220);
+      const isBlack = (r < 50 && g < 50 && b < 50);
+
+      if (nameLower.includes('batman') || nameLower.includes('bruce')) {
+        if (isHair) {
+          data[i] = 30; data[i+1] = 35; data[i+2] = 45;
+        } else if (isSkin) {
+          const pixelY = Math.floor((i / 4) / canvas.width) % 16;
+          if (pixelY < 8) {
+            data[i] = 30; data[i+1] = 35; data[i+2] = 45;
+          }
+        } else if (isSuit) {
+          data[i] = 55; data[i+1] = 60; data[i+2] = 70;
+        } else if (isWhite || isBlack) {
+          data[i] = 230; data[i+1] = 180; data[i+2] = 30;
+        }
+      } else if (nameLower.includes('alfred')) {
+        if (isHair) {
+          data[i] = 170; data[i+1] = 175; data[i+2] = 180;
+        } else if (isSuit) {
+          data[i] = 26; data[i+1] = 26; data[i+2] = 26;
+        } else if (isBlack) {
+          data[i] = 26; data[i+1] = 26; data[i+2] = 26;
+        }
+      } else if (nameLower.includes('robin')) {
+        if (isHair) {
+          data[i] = 26; data[i+1] = 26; data[i+2] = 26;
+        } else if (isSuit) {
+          data[i] = 190; data[i+1] = 30; data[i+2] = 30;
+        } else if (isSkin) {
+          const pixelY = Math.floor((i / 4) / canvas.width) % 16;
+          if (pixelY >= 4 && pixelY <= 7) {
+            data[i] = 20; data[i+1] = 20; data[i+2] = 20;
+          }
+        } else if (isWhite) {
+          data[i] = 230; data[i+1] = 180; data[i+2] = 30;
+        }
+      } else if (nameLower.includes('batgirl')) {
+        if (isHair) {
+          data[i] = 210; data[i+1] = 90; data[i+2] = 35;
+        } else if (isSuit) {
+          data[i] = 90; data[i+1] = 50; data[i+2] = 130;
+        } else if (isSkin) {
+          const pixelY = Math.floor((i / 4) / canvas.width) % 16;
+          if (pixelY < 8) {
+            data[i] = 20; data[i+1] = 20; data[i+2] = 20;
+          }
+        } else if (isWhite) {
+          data[i] = 230; data[i+1] = 180; data[i+2] = 30;
+        }
+      }
+    }
+
+    ctx.putImageData(imgData, 0, 0);
+    this.tintCache[cacheKey] = canvas;
+    return canvas;
+  }
+
+  getCharacterAvatar(name, index, hueShift = 0) {
+    const cacheKey = `${index}:${hueShift}:${(name || '').toLowerCase()}`;
     if (this.avatarCache[cacheKey]) return this.avatarCache[cacheKey];
 
-    const sprite = this.getTintedCharacter(index, hueShift);
+    const sprite = this.getCustomCharacter(name, index, hueShift);
     if (!sprite) return null;
 
     const frameColumns = 7;

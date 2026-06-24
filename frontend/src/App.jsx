@@ -394,7 +394,7 @@ function App() {
       ...agent,
       avatar: loading
         ? null
-        : assetLoader.getCharacterAvatar(visual.characterIndex, visual.hueShift),
+        : assetLoader.getCharacterAvatar(agent.name, visual.characterIndex, visual.hueShift),
       zoneLabel: zoneLabelMap[agent.location] || agent.location || 'Desk',
       displayTask,
       statusLabel,
