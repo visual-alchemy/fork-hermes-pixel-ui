@@ -1,0 +1,314 @@
+{
+  "name": "Cozy Wayne Manor Lounge",
+  "version": "0.4.0",
+  "gridSize": 32,
+  "dimensions": {
+    "width": 28,
+    "height": 26
+  },
+  "theme": {
+    "walkwayFloorIndex": 4,
+    "walkwaySurface": "hall",
+    "wallColor": "#121620",
+    "trimColor": "#00b4d8",
+    "shadowColor": "rgba(0, 0, 0, 0.45)",
+    "officeBounds": {
+      "x": 1,
+      "y": 1,
+      "width": 26,
+      "height": 24
+    }
+  },
+  "zones": [
+    {
+      "id": "library",
+      "name": "Library",
+      "label": "Batcomputer Archives",
+      "style": "open",
+      "surface": "wood",
+      "outline": false,
+      "showLabel": true,
+      "labelAnchor": { "col": 7.5, "row": 1.6, "align": "center", "offsetY": 4 },
+      "labelMaxWidthTiles": 6.0,
+      "bounds": {
+        "x": 2,
+        "y": 2,
+        "width": 12,
+        "height": 6
+      },
+      "slots": [
+        { "col": 3, "row": 5 },
+        { "col": 6, "row": 5 },
+        { "col": 9, "row": 5 },
+        { "col": 11, "row": 5 }
+      ],
+      "interactionTargets": {
+        "research": [
+          { "col": 3, "row": 4, "facingRight": true },
+          { "col": 4, "row": 4, "facingRight": false },
+          { "col": 7, "row": 4, "facingRight": true },
+          { "col": 8, "row": 4, "facingRight": false },
+          { "col": 11, "row": 4, "facingRight": true },
+          { "col": 12, "row": 4, "facingRight": false }
+        ]
+      },
+      "capacity": 6
+    },
+    {
+      "id": "cafe",
+      "name": "Cafe",
+      "label": "Alfred's Kitchen",
+      "style": "room",
+      "surface": "tile-light",
+      "showLabel": true,
+      "labelAnchor": { "col": 20.75, "row": 1.65, "align": "center", "offsetY": 6 },
+      "labelMaxWidthTiles": 5.0,
+      "bounds": {
+        "x": 16,
+        "y": 2,
+        "width": 10,
+        "height": 5
+      },
+      "doors": [
+        { "side": "left", "start": 1, "size": 2 }
+      ],
+      "slots": [
+        { "col": 20, "row": 4 },
+        { "col": 21, "row": 4 },
+        { "col": 21, "row": 5 },
+        { "col": 23, "row": 5 }
+      ],
+      "interactionTargets": {
+        "break": [
+          { "col": 17, "row": 5, "facingRight": true, "allowBlocked": true, "allowEdge": true, "pose": "seated" },
+          { "col": 20, "row": 5, "facingRight": false, "allowBlocked": true, "pose": "seated" },
+          { "col": 18, "row": 3, "facingRight": true, "pose": "standing" },
+          { "col": 21, "row": 4, "facingRight": false, "pose": "standing" }
+        ]
+      },
+      "capacity": 4
+    },
+    {
+      "id": "desk",
+      "name": "Desk Area",
+      "label": "Tactical Control",
+      "style": "open",
+      "surface": "wood",
+      "outline": false,
+      "showLabel": true,
+      "labelAnchor": { "col": 7.5, "row": 8.2, "align": "center", "offsetY": 4 },
+      "labelMaxWidthTiles": 5.0,
+      "bounds": {
+        "x": 2,
+        "y": 8,
+        "width": 12,
+        "height": 17
+      },
+      "slots": [
+        { "col": 7, "row": 11 },
+        { "col": 7, "row": 14 },
+        { "col": 7, "row": 17 },
+        { "col": 7, "row": 20 },
+        { "col": 7, "row": 23 },
+        { "col": 3, "row": 12 },
+        { "col": 11, "row": 12 },
+        { "col": 3, "row": 18 },
+        { "col": 11, "row": 18 }
+      ],
+      "interactionTargets": {
+        "computer": [
+          { "col": 4, "row": 11, "facingRight": true, "allowBlocked": true },
+          { "col": 10, "row": 11, "facingRight": false, "allowBlocked": true },
+          { "col": 4, "row": 17, "facingRight": true, "allowBlocked": true },
+          { "col": 10, "row": 17, "facingRight": false, "allowBlocked": true },
+          { "col": 4, "row": 23, "facingRight": true, "allowBlocked": true },
+          { "col": 10, "row": 23, "facingRight": false, "allowBlocked": true }
+        ]
+      },
+      "capacity": 12
+    },
+    {
+      "id": "meeting",
+      "name": "Meeting",
+      "label": "War Room",
+      "style": "room",
+      "surface": "tile-blue",
+      "showLabel": true,
+      "showInOverview": false,
+      "labelAnchor": { "col": 21, "row": 7.65, "align": "center" },
+      "labelMaxWidthTiles": 5.0,
+      "bounds": {
+        "x": 16,
+        "y": 8,
+        "width": 10,
+        "height": 4
+      },
+      "doors": [
+        { "side": "left", "start": 1, "size": 2 }
+      ],
+      "slots": [
+        { "col": 18, "row": 9 },
+        { "col": 21, "row": 9 },
+        { "col": 23, "row": 9 }
+      ],
+      "interactionTargets": {
+        "meeting": [
+          { "col": 18, "row": 10, "facingRight": true, "allowBlocked": true, "pose": "seated" },
+          { "col": 21, "row": 10, "facingRight": false, "allowBlocked": true, "pose": "seated" },
+          { "col": 18, "row": 9, "facingRight": true, "pose": "standing" },
+          { "col": 21, "row": 9, "facingRight": false, "pose": "standing" }
+        ]
+      },
+      "capacity": 4
+    },
+    {
+      "id": "lounge",
+      "name": "Lounge",
+      "label": "Batmobile Dock",
+      "style": "room",
+      "surface": "carpet-blue",
+      "showLabel": true,
+      "labelAnchor": { "col": 21, "row": 12.8, "align": "center", "offsetY": 6 },
+      "labelMaxWidthTiles": 5.0,
+      "bounds": {
+        "x": 16,
+        "y": 13,
+        "width": 10,
+        "height": 5
+      },
+      "doors": [
+        { "side": "left", "start": 2, "size": 1 }
+      ],
+      "slots": [
+        { "col": 18, "row": 15 },
+        { "col": 21, "row": 15 },
+        { "col": 19, "row": 14 },
+        { "col": 20, "row": 14 }
+      ],
+      "interactionTargets": {
+        "rest": [
+          { "col": 18, "row": 16, "facingRight": true, "allowBlocked": true, "pose": "resting" },
+          { "col": 21, "row": 16, "facingRight": false, "allowBlocked": true, "pose": "resting" },
+          { "col": 19, "row": 14, "facingRight": true, "pose": "standing" },
+          { "col": 20, "row": 14, "facingRight": false, "pose": "standing" }
+        ]
+      },
+      "capacity": 4
+    },
+    {
+      "id": "lab",
+      "name": "Applied Sciences Lab",
+      "label": "Applied Sciences Lab",
+      "style": "room",
+      "surface": "brick",
+      "showLabel": true,
+      "labelAnchor": { "col": 21, "row": 18.8, "align": "center", "offsetY": 6 },
+      "labelMaxWidthTiles": 5.0,
+      "bounds": {
+        "x": 16,
+        "y": 19,
+        "width": 10,
+        "height": 6
+      },
+      "doors": [
+        { "side": "left", "start": 2, "size": 2 }
+      ],
+      "slots": [
+        { "col": 18, "row": 21 },
+        { "col": 21, "row": 21 }
+      ],
+      "interactionTargets": {
+        "computer": [
+          { "col": 18, "row": 21, "facingRight": true },
+          { "col": 21, "row": 21, "facingRight": false }
+        ]
+      },
+      "capacity": 4
+    }
+  ],
+  "furniture": [
+    { "id": "lib_books_1", "type": "double_bookshelf", "x": 2, "y": 2, "rotation": 0 },
+    { "id": "lib_books_2", "type": "double_bookshelf", "x": 6, "y": 2, "rotation": 0 },
+    { "id": "lib_books_3", "type": "double_bookshelf", "x": 10, "y": 2, "rotation": 0 },
+    { "id": "lib_sofa_1", "type": "sofa", "x": 4, "y": 5, "rotation": 1 },
+    { "id": "lib_sofa_2", "type": "sofa", "x": 8, "y": 5, "rotation": 3 },
+    { "id": "lib_table", "type": "coffee_table", "x": 6, "y": 5, "rotation": 0 },
+    { "id": "lib_coffee", "type": "coffee", "x": 6, "y": 5, "rotation": 0 },
+    { "id": "lib_plant", "type": "large_plant", "x": 11, "y": 5, "rotation": 0 },
+    { "id": "lib_clock", "type": "clock", "x": 11, "y": 2, "rotation": 0 },
+
+    { "id": "cafe_counter_1", "type": "small_table", "x": 17, "y": 2, "rotation": 0 },
+    { "id": "cafe_counter_2", "type": "small_table", "x": 19, "y": 2, "rotation": 0 },
+    { "id": "cafe_counter_3", "type": "small_table", "x": 21, "y": 2, "rotation": 0 },
+    { "id": "cafe_coffee_1", "type": "coffee", "x": 17, "y": 2, "rotation": 0 },
+    { "id": "cafe_coffee_2", "type": "coffee", "x": 19, "y": 2, "rotation": 0 },
+    { "id": "cafe_hanging_plant", "type": "hanging_plant", "x": 18, "y": 2, "rotation": 0 },
+    { "id": "cafe_table", "type": "small_table", "x": 18, "y": 4, "rotation": 0 },
+    { "id": "cafe_chair_1", "type": "cushioned_chair", "x": 17, "y": 4, "rotation": 1 },
+    { "id": "cafe_chair_2", "type": "cushioned_chair", "x": 19, "y": 4, "rotation": 3 },
+    { "id": "cafe_coffee_table_cup", "type": "coffee", "x": 18, "y": 4, "rotation": 0 },
+    { "id": "cafe_whiteboard", "type": "whiteboard", "x": 23, "y": 2, "rotation": 0 },
+    { "id": "cafe_bench", "type": "cushioned_bench", "x": 21, "y": 4, "rotation": 0 },
+
+    { "id": "desk_1", "type": "desk", "x": 4, "y": 11, "rotation": 0 },
+    { "id": "pc_1", "type": "pc", "x": 4, "y": 11, "rotation": 0 },
+    { "id": "chair_1", "type": "wooden_chair", "x": 4, "y": 12, "rotation": 2, "renderOffsetY": -0.35 },
+
+    { "id": "desk_2", "type": "desk", "x": 4, "y": 14, "rotation": 0 },
+    { "id": "pc_2", "type": "pc", "x": 4, "y": 14, "rotation": 0 },
+    { "id": "chair_2", "type": "wooden_chair", "x": 4, "y": 15, "rotation": 2, "renderOffsetY": -0.35 },
+
+    { "id": "desk_3", "type": "desk", "x": 8, "y": 11, "rotation": 0 },
+    { "id": "pc_3", "type": "pc", "x": 8, "y": 11, "rotation": 0 },
+    { "id": "chair_3", "type": "wooden_chair", "x": 8, "y": 12, "rotation": 2, "renderOffsetY": -0.35 },
+
+    { "id": "desk_4", "type": "desk", "x": 8, "y": 14, "rotation": 0 },
+    { "id": "pc_4", "type": "pc", "x": 8, "y": 14, "rotation": 0 },
+    { "id": "chair_4", "type": "wooden_chair", "x": 8, "y": 15, "rotation": 2, "renderOffsetY": -0.35 },
+
+    { "id": "batman_desk", "type": "desk", "x": 6, "y": 19, "rotation": 0 },
+    { "id": "batman_pc", "type": "pc", "x": 6, "y": 19, "rotation": 0 },
+    { "id": "batman_chair", "type": "cushioned_chair", "x": 6, "y": 20, "rotation": 2 },
+    { "id": "batman_coffee", "type": "coffee", "x": 6, "y": 19, "rotation": 0 },
+    { "id": "batman_plant_l", "type": "large_plant", "x": 2, "y": 19, "rotation": 0 },
+    { "id": "batman_plant_r", "type": "large_plant", "x": 11, "y": 19, "rotation": 0 },
+    { "id": "batman_case_board_l", "type": "whiteboard", "x": 4, "y": 19, "rotation": 0 },
+    { "id": "batman_case_board_r", "type": "whiteboard", "x": 8, "y": 19, "rotation": 0 },
+    { "id": "batman_bin", "type": "bin", "x": 2, "y": 21, "rotation": 0 },
+
+    { "id": "meeting_table_1", "type": "small_table", "x": 18, "y": 9, "rotation": 0 },
+    { "id": "meeting_table_2", "type": "small_table", "x": 20, "y": 9, "rotation": 0 },
+    { "id": "meeting_pc", "type": "pc", "x": 18, "y": 9, "rotation": 0 },
+    { "id": "meeting_chair_1", "type": "cushioned_chair", "x": 17, "y": 9, "rotation": 1 },
+    { "id": "meeting_chair_2", "type": "cushioned_chair", "x": 21, "y": 9, "rotation": 3 },
+    { "id": "meeting_board", "type": "whiteboard", "x": 23, "y": 8, "rotation": 0 },
+    { "id": "meeting_coffee", "type": "coffee", "x": 20, "y": 9, "rotation": 0 },
+
+    { "id": "lounge_sofa_1", "type": "sofa", "x": 18, "y": 14, "rotation": 1 },
+    { "id": "lounge_sofa_2", "type": "sofa", "x": 22, "y": 14, "rotation": 3 },
+    { "id": "lounge_art", "type": "large_painting", "x": 20, "y": 13, "rotation": 0 },
+    { "id": "lounge_table", "type": "coffee_table", "x": 20, "y": 14, "rotation": 0 },
+    { "id": "lounge_tea", "type": "coffee", "x": 20, "y": 14, "rotation": 0 },
+    { "id": "lounge_bookshelf", "type": "bookshelf", "x": 17, "y": 15, "rotation": 0 },
+    { "id": "lounge_plant", "type": "plant_2", "x": 23, "y": 15, "rotation": 0 },
+
+    { "id": "lab_table_1", "type": "small_table", "x": 18, "y": 21, "rotation": 0 },
+    { "id": "lab_pc_1", "type": "pc", "x": 18, "y": 21, "rotation": 0 },
+    { "id": "lab_chair_1", "type": "wooden_chair", "x": 18, "y": 22, "rotation": 2, "renderOffsetY": -0.35 },
+    { "id": "lab_table_2", "type": "small_table", "x": 21, "y": 21, "rotation": 0 },
+    { "id": "lab_pc_2", "type": "pc", "x": 21, "y": 21, "rotation": 0 },
+    { "id": "lab_chair_2", "type": "wooden_chair", "x": 21, "y": 22, "rotation": 2, "renderOffsetY": -0.35 },
+    { "id": "lab_whiteboard", "type": "whiteboard", "x": 17, "y": 20, "rotation": 0 },
+    { "id": "lab_bookshelf", "type": "double_bookshelf", "x": 22, "y": 20, "rotation": 0 },
+    { "id": "lab_cactus", "type": "cactus", "x": 21, "y": 21, "rotation": 0 },
+    { "id": "lab_bin", "type": "bin", "x": 24, "y": 22, "rotation": 0 }
+  ],
+  "floors": {
+    "color": "#2d2d44",
+    "pattern": "solid"
+  },
+  "walls": {
+    "color": "#20283a",
+    "pattern": "solid"
+  }
+}

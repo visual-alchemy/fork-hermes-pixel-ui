@@ -1,0 +1,280 @@
+{
+  "name": "The Dark Knight's Training Vault",
+  "version": "0.4.0",
+  "gridSize": 32,
+  "dimensions": {
+    "width": 28,
+    "height": 26
+  },
+  "theme": {
+    "walkwayFloorIndex": 4,
+    "walkwaySurface": "hall",
+    "wallColor": "#121620",
+    "trimColor": "#00b4d8",
+    "shadowColor": "rgba(0, 0, 0, 0.45)",
+    "officeBounds": {
+      "x": 1,
+      "y": 1,
+      "width": 26,
+      "height": 24
+    }
+  },
+  "zones": [
+    {
+      "id": "library",
+      "name": "Library",
+      "label": "Batcomputer Archives",
+      "style": "open",
+      "surface": "wood",
+      "outline": false,
+      "showLabel": true,
+      "labelAnchor": { "col": 7.5, "row": 1.6, "align": "center", "offsetY": 4 },
+      "labelMaxWidthTiles": 6.0,
+      "bounds": {
+        "x": 2,
+        "y": 2,
+        "width": 12,
+        "height": 6
+      },
+      "slots": [
+        { "col": 6, "row": 5 },
+        { "col": 3, "row": 5 },
+        { "col": 9, "row": 5 }
+      ],
+      "interactionTargets": {
+        "research": [
+          { "col": 6, "row": 4, "facingRight": true },
+          { "col": 3, "row": 4, "facingRight": true },
+          { "col": 9, "row": 4, "facingRight": false }
+        ]
+      },
+      "capacity": 4
+    },
+    {
+      "id": "cafe",
+      "name": "Cafe",
+      "label": "Medical & Recovery Bay",
+      "style": "room",
+      "surface": "tile-blue",
+      "showLabel": true,
+      "labelAnchor": { "col": 20.75, "row": 1.65, "align": "center", "offsetY": 6 },
+      "labelMaxWidthTiles": 5.0,
+      "bounds": {
+        "x": 16,
+        "y": 2,
+        "width": 10,
+        "height": 5
+      },
+      "doors": [
+        { "side": "left", "start": 1, "size": 2 }
+      ],
+      "slots": [
+        { "col": 17, "row": 3 },
+        { "col": 21, "row": 3 },
+        { "col": 19, "row": 4 }
+      ],
+      "interactionTargets": {
+        "break": [
+          { "col": 17, "row": 3, "facingRight": true, "pose": "resting" },
+          { "col": 21, "row": 3, "facingRight": false, "pose": "resting" },
+          { "col": 19, "row": 4, "facingRight": true, "pose": "seated" }
+        ]
+      },
+      "capacity": 4
+    },
+    {
+      "id": "desk",
+      "name": "Desk Area",
+      "label": "Combat Simulation Area",
+      "style": "open",
+      "surface": "brick",
+      "outline": false,
+      "showLabel": true,
+      "labelAnchor": { "col": 7.5, "row": 8.2, "align": "center", "offsetY": 4 },
+      "labelMaxWidthTiles": 5.0,
+      "bounds": {
+        "x": 2,
+        "y": 8,
+        "width": 12,
+        "height": 17
+      },
+      "slots": [
+        { "col": 7, "row": 11 },
+        { "col": 4, "row": 15 },
+        { "col": 10, "row": 15 },
+        { "col": 4, "row": 21 },
+        { "col": 10, "row": 21 }
+      ],
+      "interactionTargets": {
+        "computer": [
+          { "col": 7, "row": 11, "facingRight": true }
+        ],
+        "simulation": [
+          { "col": 4, "row": 15, "facingRight": true, "pose": "standing" },
+          { "col": 10, "row": 15, "facingRight": false, "pose": "standing" }
+        ]
+      },
+      "capacity": 10
+    },
+    {
+      "id": "meeting",
+      "name": "Meeting",
+      "label": "Operations War Room",
+      "style": "room",
+      "surface": "carpet-blue",
+      "showLabel": true,
+      "showInOverview": false,
+      "labelAnchor": { "col": 21, "row": 7.65, "align": "center" },
+      "labelMaxWidthTiles": 5.0,
+      "bounds": {
+        "x": 16,
+        "y": 8,
+        "width": 10,
+        "height": 4
+      },
+      "doors": [
+        { "side": "left", "start": 1, "size": 2 }
+      ],
+      "slots": [
+        { "col": 18, "row": 9 },
+        { "col": 21, "row": 9 }
+      ],
+      "interactionTargets": {
+        "meeting": [
+          { "col": 18, "row": 10, "facingRight": true, "pose": "seated" },
+          { "col": 21, "row": 10, "facingRight": false, "pose": "seated" }
+        ]
+      },
+      "capacity": 4
+    },
+    {
+      "id": "lounge",
+      "name": "Lounge",
+      "label": "Alfred's Kitchen & Dining",
+      "style": "room",
+      "surface": "tile-light",
+      "showLabel": true,
+      "labelAnchor": { "col": 21, "row": 12.8, "align": "center", "offsetY": 6 },
+      "labelMaxWidthTiles": 5.0,
+      "bounds": {
+        "x": 16,
+        "y": 13,
+        "width": 10,
+        "height": 5
+      },
+      "doors": [
+        { "side": "left", "start": 2, "size": 1 }
+      ],
+      "slots": [
+        { "col": 18, "row": 15 },
+        { "col": 20, "row": 15 },
+        { "col": 22, "row": 15 }
+      ],
+      "interactionTargets": {
+        "rest": [
+          { "col": 18, "row": 15, "facingRight": true, "pose": "seated" },
+          { "col": 20, "row": 15, "facingRight": false, "pose": "seated" }
+        ]
+      },
+      "capacity": 4
+    },
+    {
+      "id": "lab",
+      "name": "Applied Sciences Lab",
+      "label": "Applied Sciences Lab",
+      "style": "room",
+      "surface": "brick",
+      "showLabel": true,
+      "labelAnchor": { "col": 21, "row": 18.8, "align": "center", "offsetY": 6 },
+      "labelMaxWidthTiles": 5.0,
+      "bounds": {
+        "x": 16,
+        "y": 19,
+        "width": 10,
+        "height": 6
+      },
+      "doors": [
+        { "side": "left", "start": 2, "size": 2 }
+      ],
+      "slots": [
+        { "col": 18, "row": 21 },
+        { "col": 21, "row": 21 }
+      ],
+      "interactionTargets": {
+        "computer": [
+          { "col": 18, "row": 21, "facingRight": true },
+          { "col": 21, "row": 21, "facingRight": false }
+        ]
+      },
+      "capacity": 4
+    }
+  ],
+  "furniture": [
+    { "id": "lib_books_1", "type": "double_bookshelf", "x": 2, "y": 2, "rotation": 0 },
+    { "id": "lib_books_2", "type": "double_bookshelf", "x": 6, "y": 2, "rotation": 0 },
+    { "id": "lib_books_3", "type": "double_bookshelf", "x": 10, "y": 2, "rotation": 0 },
+    { "id": "lib_console", "type": "small_table", "x": 6, "y": 4, "rotation": 0 },
+    { "id": "lib_pc", "type": "pc", "x": 6, "y": 4, "rotation": 0 },
+    { "id": "lib_chair", "type": "wooden_chair", "x": 6, "y": 5, "rotation": 2, "renderOffsetY": -0.35 },
+    { "id": "lib_plant_1", "type": "large_plant", "x": 2, "y": 4, "rotation": 0 },
+    { "id": "lib_plant_2", "type": "large_plant", "x": 11, "y": 4, "rotation": 0 },
+
+    { "id": "med_bed_1", "type": "cushioned_bench", "x": 17, "y": 3, "rotation": 1 },
+    { "id": "med_bed_2", "type": "cushioned_bench", "x": 21, "y": 3, "rotation": 3 },
+    { "id": "med_monitor", "type": "small_table", "x": 19, "y": 2, "rotation": 0 },
+    { "id": "med_pc", "type": "pc", "x": 19, "y": 2, "rotation": 0 },
+    { "id": "med_chair", "type": "cushioned_chair", "x": 19, "y": 3, "rotation": 2 },
+    { "id": "med_pot", "type": "pot", "x": 23, "y": 2, "rotation": 0 },
+
+    { "id": "sim_control_desk", "type": "desk", "x": 6, "y": 9, "rotation": 0 },
+    { "id": "sim_control_pc", "type": "pc", "x": 6, "y": 9, "rotation": 0 },
+    { "id": "sim_control_chair", "type": "wooden_chair", "x": 6, "y": 10, "rotation": 2, "renderOffsetY": -0.35 },
+    { "id": "sim_whiteboard_l", "type": "whiteboard", "x": 3, "y": 9, "rotation": 0 },
+    { "id": "sim_whiteboard_r", "type": "whiteboard", "x": 9, "y": 9, "rotation": 0 },
+    { "id": "sim_mat_1", "type": "wooden_bench", "x": 3, "y": 14, "rotation": 0 },
+    { "id": "sim_mat_2", "type": "wooden_bench", "x": 4, "y": 14, "rotation": 0 },
+    { "id": "sim_mat_3", "type": "wooden_bench", "x": 5, "y": 14, "rotation": 0 },
+    { "id": "sim_mat_4", "type": "wooden_bench", "x": 9, "y": 14, "rotation": 0 },
+    { "id": "sim_mat_5", "type": "wooden_bench", "x": 10, "y": 14, "rotation": 0 },
+    { "id": "sim_mat_6", "type": "wooden_bench", "x": 11, "y": 14, "rotation": 0 },
+    { "id": "sim_dummy_1", "type": "cactus", "x": 4, "y": 18, "rotation": 0 },
+    { "id": "sim_dummy_2", "type": "cactus", "x": 10, "y": 18, "rotation": 0 },
+    { "id": "sim_plant_1", "type": "large_plant", "x": 3, "y": 22, "rotation": 0 },
+    { "id": "sim_plant_2", "type": "large_plant", "x": 11, "y": 22, "rotation": 0 },
+    { "id": "sim_bin", "type": "bin", "x": 2, "y": 24, "rotation": 0 },
+
+    { "id": "war_table_1", "type": "small_table", "x": 18, "y": 9, "rotation": 0 },
+    { "id": "war_table_2", "type": "small_table", "x": 20, "y": 9, "rotation": 0 },
+    { "id": "war_pc", "type": "pc", "x": 18, "y": 9, "rotation": 0 },
+    { "id": "war_chair_1", "type": "cushioned_chair", "x": 18, "y": 10, "rotation": 2 },
+    { "id": "war_chair_2", "type": "cushioned_chair", "x": 20, "y": 10, "rotation": 2 },
+    { "id": "war_board", "type": "whiteboard", "x": 17, "y": 8, "rotation": 0 },
+    { "id": "war_coffee", "type": "coffee", "x": 20, "y": 9, "rotation": 0 },
+
+    { "id": "dining_table", "type": "small_table", "x": 19, "y": 14, "rotation": 0 },
+    { "id": "dining_chair_1", "type": "cushioned_chair", "x": 18, "y": 14, "rotation": 1 },
+    { "id": "dining_chair_2", "type": "cushioned_chair", "x": 20, "y": 14, "rotation": 3 },
+    { "id": "dining_coffee_1", "type": "coffee", "x": 19, "y": 14, "rotation": 0 },
+    { "id": "dining_coffee_2", "type": "coffee", "x": 20, "y": 14, "rotation": 0 },
+    { "id": "dining_books", "type": "bookshelf", "x": 17, "y": 13, "rotation": 0 },
+    { "id": "dining_art", "type": "large_painting", "x": 19, "y": 13, "rotation": 0 },
+
+    { "id": "lab_bench_1", "type": "small_table", "x": 18, "y": 20, "rotation": 0 },
+    { "id": "lab_pc_1", "type": "pc", "x": 18, "y": 20, "rotation": 0 },
+    { "id": "lab_chair_1", "type": "wooden_chair", "x": 18, "y": 21, "rotation": 2, "renderOffsetY": -0.35 },
+    { "id": "lab_bench_2", "type": "small_table", "x": 21, "y": 20, "rotation": 0 },
+    { "id": "lab_pc_2", "type": "pc", "x": 21, "y": 20, "rotation": 0 },
+    { "id": "lab_chair_2", "type": "wooden_chair", "x": 21, "y": 21, "rotation": 2, "renderOffsetY": -0.35 },
+    { "id": "lab_board", "type": "whiteboard", "x": 17, "y": 19, "rotation": 0 },
+    { "id": "lab_sample", "type": "cactus", "x": 24, "y": 23, "rotation": 0 },
+    { "id": "lab_bin", "type": "bin", "x": 24, "y": 24, "rotation": 0 }
+  ],
+  "floors": {
+    "color": "#2d2d44",
+    "pattern": "solid"
+  },
+  "walls": {
+    "color": "#20283a",
+    "pattern": "solid"
+  }
+}
