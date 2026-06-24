@@ -15,3 +15,9 @@ services:
       - HERMES_SESSIONS_DIR=/root/.hermes/sessions
       - PIXEL_UI_DISABLE_CAFFEINATE=1
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/api/status"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
