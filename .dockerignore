@@ -1,0 +1,8 @@
+node_modules
+.venv
+backend/.venv
+frontend/dist
+.git
+.gitignore
+*.log
+.DS_Store

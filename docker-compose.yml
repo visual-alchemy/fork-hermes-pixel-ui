@@ -1,0 +1,15 @@
+services:
+  pixel-ui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: hermes-pixel-ui:latest
+    container_name: hermes-pixel-ui
+    ports:
+      - "9000:9000"
+    volumes:
+      - ${HOME}/.hermes/sessions:/root/.hermes/sessions:ro
+    environment:
+      - HERMES_SESSIONS_DIR=/root/.hermes/sessions
+      - PIXEL_UI_DISABLE_CAFFEINATE=1
+    restart: unless-stopped

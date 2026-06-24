@@ -10,6 +10,7 @@ Este módulo se encarga de:
 import asyncio
 import json
 import logging
+import os
 import re
 from datetime import datetime
 from pathlib import Path
@@ -55,7 +56,13 @@ class HermesBridge:
     """
     
     def __init__(self, session_dir: Path = None):
-        self.session_dir = session_dir or Path.home() / ".hermes" / "sessions"
+        if session_dir is None:
+            env_dir = os.getenv("HERMES_SESSIONS_DIR")
+            if env_dir:
+                session_dir = Path(env_dir)
+            else:
+                session_dir = Path.home() / ".hermes" / "sessions"
+        self.session_dir = session_dir
         self.running = False
         self.event_callback: Optional[Callable] = None
         self._last_positions = {}  # Track last known positions in log files

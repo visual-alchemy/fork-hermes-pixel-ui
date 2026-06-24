@@ -291,7 +291,9 @@ function App() {
 
   useEffect(() => {
     const connect = () => {
-      const ws = new WebSocket(`ws://${window.location.hostname}:9000/ws`)
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+      const wsPort = window.location.port ? `:${window.location.port}` : ''
+      const ws = new WebSocket(`${wsProtocol}//${window.location.hostname}${wsPort}/ws`)
 
       ws.onopen = () => {
         setConnected(true)
