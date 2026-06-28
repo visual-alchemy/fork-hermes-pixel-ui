@@ -572,13 +572,19 @@ async def receive_hermes_event(payload: HermesPluginEvent):
 
 
 def _translate_plugin_event(payload: HermesPluginEvent, session_id: str):
-    """Convert a plugin HTTP event into a HermesEvent."""
+    """Convert a plugin HTTP event into a HermesEvent.
+
+    All plugin events originate from the current Hermes instance (Alfred).
+    Map them to hermes_current to prevent ghost agent spawns from per-turn
+    session IDs (e.g. Telegram chat turns).
+    """
     from hermes_bridge import HermesEvent
+    agent_id = "hermes_current"
 
     if payload.event == "session_start":
         return HermesEvent("agent_started", {
-            "agent_id": session_id,
-            "name": f"Hermes-{session_id[:6]}",
+            "agent_id": agent_id,
+            "name": "Alfred",
             "task": "Session iniciada",
         })
 
@@ -586,7 +592,7 @@ def _translate_plugin_event(payload: HermesPluginEvent, session_id: str):
         tool_name = payload.tool_name or "unknown"
         context_parts = [tool_name, payload.args_preview]
         return HermesEvent("tool_call", {
-            "agent_id": session_id,
+            "agent_id": agent_id,
             "tool": tool_name,
             "tools": [tool_name],
             "tool_context": " ".join(part for part in context_parts if part)[:420],
@@ -598,7 +604,7 @@ def _translate_plugin_event(payload: HermesPluginEvent, session_id: str):
     if payload.event == "tool_end":
         tool_name = payload.tool_name or "unknown"
         return HermesEvent("tool_call", {
-            "agent_id": session_id,
+            "agent_id": agent_id,
             "tool": tool_name,
             "tools": [tool_name],
             "tool_context": f"{tool_name} completed: {payload.result_preview}"[:420],
@@ -610,7 +616,7 @@ def _translate_plugin_event(payload: HermesPluginEvent, session_id: str):
     if payload.event == "llm_start":
         user_message = (payload.user_message or "")[:420]
         return HermesEvent("agent_thinking", {
-            "agent_id": session_id,
+            "agent_id": agent_id,
             "task": "Thinking",
             "task_context": user_message,
             "model": payload.model,
@@ -619,13 +625,13 @@ def _translate_plugin_event(payload: HermesPluginEvent, session_id: str):
 
     if payload.event == "llm_end":
         return HermesEvent("agent_idle", {
-            "agent_id": session_id,
+            "agent_id": agent_id,
             "task": "Idle",
         })
 
     if payload.event == "session_end":
         return HermesEvent("agent_done", {
-            "agent_id": session_id,
+            "agent_id": agent_id,
             "result": "Session finalizada",
         })
 
@@ -901,10 +907,14 @@ async def handle_hermes_event(event: HermesEvent):
         task = "Error"
         is_replay = False
 
-    # Si el agente no existe, crearlo
+    # Si el agente no existe, crearlo — but never create ghost agents
     if agent_id not in state.agents:
-        agent_name = event.data.get("name", f"Hermes-{agent_id[:6]}")
-        state.add_agent(agent_id, agent_name)
+        if "hermes_current" in state.agents and agent_id != "hermes_current":
+            logger.warning(f"Redirecting ghost agent {agent_id} to hermes_current (Alfred)")
+            agent_id = "hermes_current"
+        else:
+            agent_name = event.data.get("name", f"Hermes-{agent_id[:6]}")
+            state.add_agent(agent_id, agent_name)
     
     # Actualizar estado
     agent = state.update_agent(
